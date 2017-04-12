@@ -1,0 +1,47 @@
+K 25
+svn:wc:ra_dav:version-url
+V 39
+/source/!svn/ver/54075/trunk/pymol/misc
+END
+gen_ideal_symdef.py
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/source/!svn/ver/54961/trunk/pymol/misc/gen_ideal_symdef.py
+END
+__init__.py
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/source/!svn/ver/54964/trunk/pymol/misc/__init__.py
+END
+truss.py
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/source/!svn/ver/54964/trunk/pymol/misc/truss.py
+END
+test_rotations.py
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/source/!svn/ver/54075/trunk/pymol/misc/test_rotations.py
+END
+xyzGeom.py
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/source/!svn/ver/54961/trunk/pymol/misc/xyzGeom.py
+END
+symgen.py
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/source/!svn/ver/54962/trunk/pymol/misc/symgen.py
+END
+pymol_plot3d.py
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/source/!svn/ver/54961/trunk/pymol/misc/pymol_plot3d.py
+END
