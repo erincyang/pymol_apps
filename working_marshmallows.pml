@@ -1,5 +1,5 @@
 remove (hydro)
-bg_color white
+#bg_color white
 hide everything
 set surface_quality, 1
 alter all, b=50
