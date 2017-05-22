@@ -1119,6 +1119,16 @@ def test_xtal(G,cell,depth=4,mindepth=0,symdef=1,shownodes=1,**kwargs):
 ###### WORKING SYMDEF FILES ######
 ###### WORKING SYMDEF FILES ######
 
+###### WORKING F4222 - D2 x D2 - SYMDEF #######
+def test_P4222_D2_D2(cell=100,**kwargs):
+	#delete all ; run ~/pymolscripts/symgen2.py; test_P4222_D2_D2(cell=100, depth=2)
+	G = [ SymElem( 'D2', cen=cell*( Vec ( 0,0,0 ) ), axis=Vec(0,0,1), axis2=Vec(1,0,0) 
+		),
+	      SymElem( 'D2', cen=cell*Vec(0.5, 0.5, 0.5), axis=Vec(0,0,1), axis2=Vec(1,0,0) 
+	    ), ]
+	test_xtal(G,cell,tag='test_P4222_D2_D2',**kwargs)
+###### WORKING F4222 - D2 x D2 - SYMDEF #######
+
 ###### WORKING F222 - D2 x D2 - SYMDEF #######
 def test_F222_D2_D2(cell=100,**kwargs):
 #delete all ; run ~/pymolscripts/symgen.py; test_F222_D2_D2(cell=100, depth=6, symdef_scale=0.000001, generic_names=1)
@@ -1129,13 +1139,13 @@ def test_F222_D2_D2(cell=100,**kwargs):
 	test_xtal(G,cell,tag='test_F222_D2_D2',**kwargs)
 ###### WORKING F222 - D2 x D2 - SYMDEF #######
 	
-#### WORKING, need to move to origin ####
+#### WORKING P6222 - D2 x D2 ####
 def test_P6222_D2_D2(cell=100,**kwargs):
 	#delete all ; run ~/pymolscripts/symgen2.py; test_P6222_D2_D2(cell=100, depth=2)
-	G = [ SymElem( 'D2', cen=cell*( Vec ( 0,-0.5,-0.166667 ) - Vec ( 0,0,1 ) *0.5 ), axis=Vec(0,0,1), axis2=Vec(0.5,0.866025,0) 
+	G = [ SymElem( 'D2', cen=cell*Vec(0,0,0), axis=Vec(0,0,1), axis2=Vec(1,0,0) 
 		),
-	      SymElem( 'D2', cen=cell*Vec(0,0,0), axis=Vec(0,0,1), #axis2=Vec(,,) 
-	    ), ]
+	    SymElem( 'D2', cen=cell*( Vec ( 0,-0.5,-0.166667 ) - Vec ( 0,0,1 ) *0.5 ), axis=Vec(0,0,1), axis2=Vec(0.5,0.866025,0) 
+		), ]
 	test_xtal(G,cell,tag='test_P6222_D2_D2',**kwargs)
 #x=alignvectors(Vec(0,0,1),Vec(1,0,0),Vec(0,0,1),Vec(0.5,0.866025,0))
 #xform("vis",x)
@@ -1147,7 +1157,7 @@ def test_P6222_D2_D2(cell=100,**kwargs):
 # 	      SymElem( 'D2', cen=cell*Vec(0,0.5,0.166667), axis=Vec(0,0,1), #axis2=Vec(,,) 
 # 	    ), ]
 # 	test_xtal(G,cell,tag='test_P6222_D2_D2',**kwargs)
-#### WORKING, need to move to origin ####	
+#### WORKING P6222 - D2 x D2 ####
 
 #### WORKING P23 - D2 x T - SYMDEF ####
 def test_P23_TD2A(cell=200,**kwargs):
@@ -1542,6 +1552,13 @@ def test_P213_C3_C3_2(cell=80,**kwargs):
 	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
 	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis =Vec(1,-1,1) ),
 	      SymElem( "C3", cen=cell*(Vec(0.1663,0.3334,-0.666)-Vec(-1,1,1)*0.1), axis=Vec(-1,1,1) ),	
+	     ]
+	test_xtal(G,cell,tag='test_P213_33',**kwargs)
+
+def test_P213_C3_C3_real(cell=80,**kwargs):
+	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
+	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis=Vec(-1,1,0.6081778) ),
+	      SymElem( "C3", cen=cell*(Vec(0,0.5,0)), axis=Vec(1,-1,0.6081778 ) ),	
 	     ]
 	test_xtal(G,cell,tag='test_P213_33',**kwargs)
 
@@ -5198,7 +5215,7 @@ def test_P422_D4_D4(cell=100,**kwargs):
 # 	      SymElem( 'D2', cen=cell*Vec(0,-0.5,-0.5), axis=Vec(1,0,0), axis2=Vec(0,1,0) 
 # 	    ), ]
 # 	test_xtal(G,cell,tag='test_P4222_D2_D2',**kwargs)
-	
+
 
 # def test_P4222_D2_D2(cell=100,**kwargs):
 # 	#delete all ; run ~/pymolscripts/symgen2.py; test_P4222_D2_D2(cell=100, depth=2)
@@ -5236,13 +5253,13 @@ def test_P422_D4_D4(cell=100,**kwargs):
 # 	test_xtal(G,cell,tag='test_P4232_C3_D2',**kwargs)
 	
 
-# def test_P4232_D2_D2(cell=100,**kwargs):
-# 	#delete all ; run ~/pymolscripts/symgen2.py; test_P4232_D2_D2(cell=100, depth=2)
-# 	G = [ SymElem( 'D2', cen=cell*( Vec ( -0.5,0,-0.25 ) - Vec ( -0.707107,0.707107,0 ) *0.5 ), axis=Vec(-0.707107,0.707107,0), axis2=Vec(0.707107,0.707107,0) 
-# 		),
-# 	      SymElem( 'D2', cen=cell*Vec(-0.25,0,-0.5), axis=Vec(0,-0.707107,0.707107), axis2=Vec(0,0.707107,0.707107) 
-# 	    ), ]
-# 	test_xtal(G,cell,tag='test_P4232_D2_D2',**kwargs)
+def test_P4232_D2_D2(cell=100,**kwargs):
+	#delete all ; run ~/pymolscripts/symgen2.py; test_P4232_D2_D2(cell=100, depth=2)
+	G = [ SymElem( 'D2', cen=cell*( Vec ( -0.5,0,-0.25 ) - Vec ( -0.707107,0.707107,0 ) *0.5 ), axis=Vec(-0.707107,0.707107,0), axis2=Vec(0.707107,0.707107,0) 
+		),
+	      SymElem( 'D2', cen=cell*Vec(-0.25,0,-0.5), axis=Vec(0,-0.707107,0.707107), axis2=Vec(0,0.707107,0.707107) 
+	    ), ]
+	test_xtal(G,cell,tag='test_P4232_D2_D2',**kwargs)
 	
 
 # def test_P4232_D2_D2(cell=100,**kwargs):
