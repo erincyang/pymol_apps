@@ -1541,26 +1541,37 @@ def test_F432_C3_D2(cell=80,**kwargs):
 	     ]
 	test_xtal(G,cell,tag='test_F432_3D2',**kwargs)
 
-def test_P213_C3_C3_1(cell=80,**kwargs): ## NOT P213 ... why isn't this P213??
-	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
-	G = [ SymElem( "C3", cen=cell*Vec(-0.333,-0.1667,0.333), axis =Vec(1,-1,1) ),
-	      SymElem( "C3", cen=cell*(Vec(-0.1667,0.1667,-0.333)-Vec(-1,1,1)*0.1), axis=Vec(-1,1,1) ),	
-	     ]
-	test_xtal(G,cell,tag='test_P213_33',**kwargs)
+# def test_P213_C3_C3_1(cell=80,**kwargs): ## NOT P213 ... why isn't this P213??
+# 	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
+# 	G = [ SymElem( "C3", cen=cell*Vec(-0.333,-0.1667,0.333), axis =Vec(1,-1,1) ),
+# 	      SymElem( "C3", cen=cell*(Vec(-0.1667,0.1667,-0.333)-Vec(-1,1,1)*0.1), axis=Vec(-1,1,1) ),	
+# 	     ]
+# 	test_xtal(G,cell,tag='test_P213_33',**kwargs)
 
-def test_P213_C3_C3_2(cell=80,**kwargs):
-	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
-	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis =Vec(1,-1,1) ),
-	      SymElem( "C3", cen=cell*(Vec(0.1663,0.3334,-0.666)-Vec(-1,1,1)*0.1), axis=Vec(-1,1,1) ),	
-	     ]
-	test_xtal(G,cell,tag='test_P213_33',**kwargs)
+# def test_P213_C3_C3_2(cell=80,**kwargs):
+# 	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
+# 	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis =Vec(1,-1,1) ),
+# 	      SymElem( "C3", cen=cell*(Vec(0.1663,0.3334,-0.666)-Vec(-1,1,1)*0.1), axis=Vec(-1,1,1) ),	
+# 	     ]
+# 	test_xtal(G,cell,tag='test_P213_33',**kwargs)
 
+# def test_P213_C3_C3_real(cell=80,**kwargs):
+# 	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
+# 	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis=Vec(-1,1,2) ),
+# 	      SymElem( "C3", cen=cell*(Vec(0,0.5,0)), axis=Vec(1,-1,2 ) ),	
+# 	     ]
+# 	test_xtal(G,cell,tag='test_P213_33',**kwargs)
+
+
+#### MIGHT BE CORRECT ####
 def test_P213_C3_C3_real(cell=80,**kwargs):
 	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
-	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis=Vec(-1,1,0.6081778) ),
-	      SymElem( "C3", cen=cell*(Vec(0,0.5,0)), axis=Vec(1,-1,0.6081778 ) ),	
+	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis=Vec(-1,1,2) ),
+	      SymElem( "C3", cen=cell*(Vec(0,0.5,0)), axis=Vec(1,-1,2 ) ),	
 	     ]
 	test_xtal(G,cell,tag='test_P213_33',**kwargs)
+#### MIGHT BE CORRECT ####
+
 
 def test_I4132(cell=100,**kwargs):
 	# delete all; test_I4132(depth=7,shownodes=0,cell=200,maxrad=180); run /Users/sheffler/pymol/misc/G222.py; gyroid(200,r=180)
@@ -4856,13 +4867,13 @@ def test_I432_C2_O(cell=100,**kwargs):
 # 	test_xtal(G,cell,tag='test_I432_D4_D3',**kwargs)
 	
 
-def test_P213_C3_C3(cell=100,**kwargs): #### doesn't look correct
-	#delete all ; run ~/pymolscripts/symgen2.py; test_P213_C3_C3(cell=100, depth=2)
-	G = [ SymElem( 'C3', cen=cell*( Vec ( -0.333333,-0.166667,0.166667 ) - Vec ( 0.57735,-0.57735,0.57735 ) *0.5 ), axis=Vec(0.57735,-0.57735,0.57735), #axis2=Vec(-,-,-) 
-		),
-	      SymElem( 'C3', cen=cell*Vec(-0.166667,0.166667,-0.333333), axis=Vec(-0.57735,0.57735,0.57735), #axis2=Vec(,,) 
-	    ), ]
-	test_xtal(G,cell,tag='test_P213_C3_C3',**kwargs)
+# def test_P213_C3_C3(cell=100,**kwargs): #### doesn't look correct
+# 	#delete all ; run ~/pymolscripts/symgen2.py; test_P213_C3_C3(cell=100, depth=2)
+# 	G = [ SymElem( 'C3', cen=cell*( Vec ( -0.333333,-0.166667,0.166667 ) - Vec ( 0.57735,-0.57735,0.57735 ) *0.5 ), axis=Vec(0.57735,-0.57735,0.57735), #axis2=Vec(-,-,-) 
+# 		),
+# 	      SymElem( 'C3', cen=cell*Vec(-0.166667,0.166667,-0.333333), axis=Vec(-0.57735,0.57735,0.57735), #axis2=Vec(,,) 
+# 	    ), ]
+# 	test_xtal(G,cell,tag='test_P213_C3_C3',**kwargs)
 	
 
 def test_P23_C2_T(cell=100,**kwargs):
@@ -4919,11 +4930,19 @@ def test_P23_C2_T(cell=100,**kwargs):
 # 	test_xtal(G,cell,tag='test_P23_D2_T',**kwargs)
 	
 
+def test_P312_D3_D3(cell=100,**kwargs):
+	#delete all ; run ~/pymolscripts/symgen2.py; test_P312_D3_D3(cell=100, depth=2)
+	G = [ SymElem( 'D3', cen=cell*( Vec ( 0,0,0 ) ), axis=Vec(0,0,1), axis2=Vec(0.866025,0.5,0) 
+		),
+	      SymElem( 'D3', cen=cell*Vec(-0.333333,0.333333,-0.5), axis=Vec(0,0,1), axis2=Vec(0.866025,-0.5,0) 
+	    ), ]
+	test_xtal(G,cell,tag='test_P312_D3_D3',**kwargs)
+
 # def test_P312_D3_D3(cell=100,**kwargs):
 # 	#delete all ; run ~/pymolscripts/symgen2.py; test_P312_D3_D3(cell=100, depth=2)
-# 	G = [ SymElem( 'D3', cen=cell*( Vec ( 0.333333,-0.333333,0 ) - Vec ( 0.866025,0.5,0 ) *0.5 ), axis=Vec(0.866025,0.5,0), axis2=Vec(0,0,1) 
+# 	G = [ SymElem( 'D3', cen=cell*( Vec ( 0,0,0 ) - Vec ( 0.866025,0.5,0 ) *0.5 ), axis=Vec(0.866025,0.5,0), axis2=Vec(0,0,1) 
 # 		),
-# 	      SymElem( 'D3', cen=cell*Vec(0,0,-0.5), axis=Vec(0.866025,-0.5,0), #axis2=Vec(,,) 
+# 	      SymElem( 'D3', cen=cell*Vec(-0.333333,0.333333,-0.5), axis=Vec(0.866025,-0.5,0), axis2=Vec(0,0,1) 
 # 	    ), ]
 # 	test_xtal(G,cell,tag='test_P312_D3_D3',**kwargs)
 	
