@@ -1113,11 +1113,52 @@ def test_xtal(G,cell,depth=4,mindepth=0,symdef=1,shownodes=1,**kwargs):
 	print "N Frames:",count.count
 	cmd.set_view(v)
 
-###### WORKING SYMDEF FILES ######
-###### WORKING SYMDEF FILES ######
-###### WORKING SYMDEF FILES ######
-###### WORKING SYMDEF FILES ######
-###### WORKING SYMDEF FILES ######
+###### WORKING ONE-COMPONENT SYMDEF FILES ######
+###### WORKING ONE-COMPONENT SYMDEF FILES ######
+###### WORKING ONE-COMPONENT SYMDEF FILES ######
+###### WORKING ONE-COMPONENT SYMDEF FILES ######
+###### WORKING ONE-COMPONENT SYMDEF FILES ######
+#### TESTING - F432 - O ####
+def test_F432_O(cell=80,**kwargs): ###can't do this with only one octahedron
+	# delete all; run ~/pymol/symgen.py; test_F432_2O()
+	G = [
+			SymElem( "O", cen=cell*Vec(0,0,0), axis=Vec(1,-1,1) ),	 
+			SymElem( "O", cen=cell*(Vec(-0.5,0,0.5)-Vec(-1,1,1)*0.25), axis=Vec(-1,1,1) ),
+	     ]
+	test_xtal(G,cell,tag='test_F432_O',**kwargs)
+
+#### TESTING - I432 - O ####
+def test_I432_O(cell=120,**kwargs): ## 8 connections ##
+	X = alignvectors(Vec(1,1,1),Vec(1,0,-1),Vec(0,0,1),Vec(1,0,0))	
+	# G = [ SymElem( "O" , cen=cell*Vec(0.0,0.0,0.0) ),
+		  # SymElem( "D3", cen=cell*Vec(0.25,0.25,0.25), axis=Vec(1,1,1), axis2=Vec(1,-1,0) ), ]
+	# cube( cell*Vec(-0.5,-0.5,-0.5), cell*Vec(0.5,0.5,0.5) )
+	G = [ SymElem( "D3", cen=cell*Vec(0.0,0.0,0.0) ),
+		  SymElem( "O" , cen=cell*Vec(0.0,0.0,sqrt(3.0)/4.0), input_xform=X ),		]
+	cube( cell*Vec(-0.25,-0.25,-0.25), cell*Vec(0.75,0.75,0.75), xform=X )
+	test_xtal(G,cell,tag="test_I432_O",**kwargs)
+
+def test_F4132_T(cell=80,**kwargs):
+	G = [ SymElem( 'T', cen=cell*(Vec ( -0.5,0,0.5 )), axis=Vec(0.57735,0.57735,0.57735), #axis2=Vec(0.866025,-0.5,0) 
+ 		),
+		  SymElem( 'T', cen=cell*(Vec ( -0.25,0.25,0.75 )), axis=Vec(-0.57735,-0.57735,-0.57735), #axis2=Vec(0.866025,-0.5,0) 
+ 		),
+ 	    ]
+ 	test_xtal(G,cell,tag='test_F4132_T',**kwargs)
+
+def test_F23_T(cell=80,**kwargs):
+	G = [ SymElem( 'T', cen=cell*(Vec ( -0.5,-0.5,0 )), axis=Vec(-0.57735,0.57735,0.57735), #axis2=Vec(0.866025,-0.5,0) 
+ 		),
+		  SymElem( 'T', cen=cell*(Vec ( -0.5,0,0.5 )), axis=Vec(-0.57735,0.57735,0.57735), #axis2=Vec(0.866025,-0.5,0) 
+ 		),
+ 	    ]
+ 	test_xtal(G,cell,tag='test_F23_T',**kwargs)
+
+###### WORKING TWO-COMPONENT SYMDEF FILES ######
+###### WORKING TWO-COMPONENT SYMDEF FILES ######
+###### WORKING TWO-COMPONENT SYMDEF FILES ######
+###### WORKING TWO-COMPONENT SYMDEF FILES ######
+###### WORKING TWO-COMPONENT SYMDEF FILES ######
 
 ## maybe correct ###
 def test_P432_C3_D4(cell=100,**kwargs):
