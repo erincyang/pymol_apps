@@ -1135,8 +1135,21 @@ def test_F432_OO(cell=80,**kwargs): ###can't do this with only one octahedron
 	     ]
 	test_xtal(G,cell,tag='test_F432_O',**kwargs)
 
+def test_F432_OT(cell=80,**kwargs): ###can't do this with only one octahedron
+	# delete all; run ~/pymol/symgen.py; test_F432_2O()
+	G = [
+			SymElem( "O",  cen=cell*Vec(0,0,0) ),	 
+			SymElem( "T", cen=cell*Vec(1,1,1), axis=Vec(0,0,1), axis2=Vec(1,-1,0)  ),
+	     ]
+	test_xtal(G,cell,tag='test_F432_OT',**kwargs)
 
-
+# def test_F432_OT(cell=80,**kwargs): ###can't do this with only one octahedron
+# 	# delete all; run ~/pymol/symgen.py; test_F432_2O()
+# 	G = [
+# 			SymElem( "O",  cen=cell*Vec(0,0,0) ),	 
+# 			SymElem( "T", cen=cell*Vec(1,1,1), axis=Vec(1,1,1), axis2=Vec(1,-1,0)  ),
+# 	     ]
+# 	test_xtal(G,cell,tag='test_F432_OT',**kwargs)
 
 
 
@@ -1159,6 +1172,7 @@ def test_I432_OD3_will(cell=80,**kwargs): ###MAKE THIS SYMDEF
 			SymElem( "O",  cen=cell*Vec(0,0,0) ),	 
 			SymElem( "D3", cen=cell*Vec(1,1,1), axis=Vec(1,1,1), axis2=Vec(1,-1,0)  ),
 	     ]
+	cube(Vec(-0,-0, -0), 2*Vec(cell,cell,cell) )
 	test_xtal(G,cell,tag='I432_OD3_will',**kwargs)
 
 
@@ -1168,6 +1182,7 @@ def test_P432_OD4_will(cell=80,**kwargs): ###MAKE THIS SYMDEF
 			SymElem( "O",  cen=cell*Vec(0,0,0) ),	 
 			SymElem( "D4", cen=cell*Vec(1,0,0), axis=Vec(1,0,0), axis2=Vec(0,1,0)  ),
 	     ]
+	cube(Vec(-0,-0, -0), 2*Vec(cell,cell,cell) )
 	test_xtal(G,cell,tag='P432_OD4_will',**kwargs)
 
 
@@ -1249,19 +1264,29 @@ def test_F4132_T(cell=80,**kwargs):
 	#      ]
 	# test_xtal(G,cell,tag='test_F23_2T',**kwargs)
 
- # def test_I23_T(cell=80,**kwargs):
-	# G = [ SymElem( 'T', cen=cell*(Vec ( -0.5,-0.5,0 )), axis=Vec(-0.57735,0.57735,0.57735), #axis2=Vec(0.866025,-0.5,0) 
- # 		),
-	# 	  SymElem( 'T', cen=cell*(Vec ( -0.5,0,0.5 )), axis=Vec(-0.57735,0.57735,0.57735), #axis2=Vec(0.866025,-0.5,0) 
- # 		),
- # 	    ]
- # 	test_xtal(G,cell,tag='test_F23_T',**kwargs)
+def test_I23_T(cell=80,**kwargs):
+	G = [ SymElem( 'T', cen=cell*(Vec ( -0.5,-0.5,0 )), axis=Vec(-0.57735,0.57735,0.57735), #axis2=Vec(0.866025,-0.5,0) 
+ 		),
+		  SymElem( 'T', cen=cell*(Vec ( -0.5,0,0.5 )), axis=Vec(-0.57735,0.57735,0.57735), #axis2=Vec(0.866025,-0.5,0) 
+ 		),
+ 	    ]
+ 	test_xtal(G,cell,tag='test_F23_T',**kwargs)
 
 ###### WORKING TWO-COMPONENT SYMDEF FILES ######
 ###### WORKING TWO-COMPONENT SYMDEF FILES ######
 ###### WORKING TWO-COMPONENT SYMDEF FILES ######
 ###### WORKING TWO-COMPONENT SYMDEF FILES ######
 ###### WORKING TWO-COMPONENT SYMDEF FILES ######
+
+## work on for Harley ##
+def test_P321_C3_C3(cell=100,**kwargs):
+	#delete all ; run ~/pymolscripts/symgen2.py; test_P312_D3_D3(cell=100, depth=2)
+	G = [ SymElem( 'C3', cen=cell*( Vec ( 0,0,0 ) ), axis=Vec(0,0,1), axis2=Vec(0.866025,0.5,0) 
+		),
+	      SymElem( 'C3', cen=cell*Vec(-0.333333,0.333333,-0.5), axis=Vec(0,0,1), axis2=Vec(0.866025,-0.5,0) 
+	    ), ]
+	test_xtal(G,cell,tag='test_P321_C3_C3',**kwargs)
+
 
 ## maybe correct ###
 def test_P432_C3_D4(cell=100,**kwargs):
@@ -1719,13 +1744,22 @@ def test_F432_C3_D2(cell=80,**kwargs):
 
 
 #### MIGHT BE CORRECT ####
-def test_P213_C3_C3_real(cell=80,**kwargs):
+def test_P213_C3_C3_start(cell=80,**kwargs):
 	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
 	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis=Vec(-1,1,2) ),
 	      SymElem( "C3", cen=cell*(Vec(0,0.5,0)), axis=Vec(1,-1,2 ) ),	
 	     ]
 	test_xtal(G,cell,tag='test_P213_33',**kwargs)
 #### MIGHT BE CORRECT ####
+
+#### With Will ####
+def test_P213_C3_C3_will(cell=80,**kwargs):
+	# delete all; run ~/pymol/symgen.py; test_P4( depth=4, cell=100, symdef_scale=0.000001, generic_names=1 )
+	G = [ SymElem( "C3", cen=cell*Vec(0,0,0), axis=Vec(-1,1,2) ),
+	      SymElem( "C3", cen=cell*(Vec(0,0.5,0)), axis=Vec(1,-1,2 ) ),	
+	     ]
+	test_xtal(G,cell,tag='test_P213_33',**kwargs)
+
 
 
 def test_I4132(cell=100,**kwargs):
