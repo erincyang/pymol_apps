@@ -15,7 +15,12 @@ class SymElem(object):
 		self.col=col
 		self.frames = []
 		self.input_xform = input_xform
-		if self.kind.startswith("C"):
+		if self.kind == "Z":
+			self.frames = [
+				Xform( Mat( Vec( 1, 0, 0), Vec( 0, 1, 0), Vec( 0, 0, 1) ), Vec(0,0,0) ),
+				Xform( Mat( Vec( 1, 0, 0), Vec( 0, 1, 0), Vec( 0, 0, 1) ), cen ), ]
+			#identity & translation by cen
+		elif self.kind.startswith("C"):
 			assert not input_xform
 			self.nfold = int(self.kind[1:])
 			for i in range(self.nfold):
@@ -80,6 +85,7 @@ class SymElem(object):
 			else:           xc = Xform(cen)
 			for i,x in enumerate(self.frames):
 				self.frames[i] = (xc)*x*(~xc)
+
 		assert self.frames
 		if not self.frames[0] == Xform():
 			print self.kind,self.frames[0].pretty()
@@ -1287,6 +1293,16 @@ def test_P321_C3_C3(cell=100,**kwargs):
 	    ), ]
 	test_xtal(G,cell,tag='test_P321_C3_C3',**kwargs)
 
+## work on for Harley ##
+def test_P321_C3_C3_will(cell=100,**kwargs):
+	#delete all ; run ~/pymolscripts/symgen2.py; test_P312_D3_D3(cell=100, depth=2)
+	G = [ SymElem( 'C3', cen=cell*( Vec ( 0,0,0 ) ), axis=Vec(0,0,1), #axis2=Vec(0.866025,0.5,0) 
+		),
+	      SymElem( 'C2', cen=cell*Vec( 0,1,0), axis=Vec(1,0,0), #axis2=Vec(0.866025,-0.5,0) 
+	      	),
+	      #SymElem( 'Z', cen=cell*Vec( 0,0,2 ) ),
+	    ]
+	test_xtal(G,cell,tag='test_P321_C3_C3',**kwargs)
 
 ## maybe correct ###
 def test_P432_C3_D4(cell=100,**kwargs):
