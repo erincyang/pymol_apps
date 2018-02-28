@@ -8,7 +8,7 @@ cmd.copy("d3_3", "model_D3")
 cmd.copy("d3_4", "model_D3")
 
 ### make 4 copies of designed cage output
-cmd.set_name("combined_1ehw_chain_A_align_model_C2_jf21_1_O32F_7_1_0002", "cage")
+cmd.set_name("combined_1ehw_chain_A_align_model_C2_jf21_1_O32F_7_1_0086", "cage")
 cmd.copy("cage_1", "cage")
 cmd.copy("cage_2", "cage")
 cmd.copy("cage_3", "cage")
@@ -23,8 +23,8 @@ super cage_2 and chain A, d3_1 and chain E
 super cage_3 and chain A, d3_2 and chain E
 
 ###
-super d3_3 and chain A, cage_3 and chain E
-super d3_4 and chain A, cage_2 and chain C
+super d3_3 and chain A, cage_3 and chain U
+super d3_4 and chain A, cage_2 and chain 0
 
 ###
 super cage_4 and chain A, d3_3 and chain E
