@@ -71,8 +71,8 @@ parser.add_option("-a", dest="add_to_database", action="store_true", default=Fal
 parser.add_option("-g", dest="get_from_database", action="store_true", default=False, help="Do you want to get the structure from the shared biounits database?")
 parser.add_option("-z", dest="alignz", action="store_true", default=False, help="Do you want to extract the shortest chain and align radial symmetry axis with the z-axis?")
 parser.add_option("-v", dest="view_in_pymol", action="store_true", default=False, help="If executed without the -c option this will enable you to view the results in pymol")
-parser.add_option("-1", dest="max_distance_error", default=1.0, help="Threshold for the error in the distance for an acceptable alignement")
-parser.add_option("-2", dest="max_angle_error", default=1.0, help="Threshold for the error in the angle for an acceptable alignement")
+parser.add_option("-1", dest="max_distance_error", default=0.75, help="Threshold for the error in the distance for an acceptable alignement")
+parser.add_option("-2", dest="max_angle_error", default=0.3, help="Threshold for the error in the angle for an acceptable alignement")
 parser.add_option("-e", dest="expected_symmetry", default=None, help="Optional. If you have an expected symmetry, example C3, and the determined symmetry does not match, then put a warning in the output pdb.")
 (options, args) = parser.parse_args()
 
@@ -655,99 +655,51 @@ for pdb in pdb_list:
 			tmp = None
 			cmd.do("run %s" %(options.pymol_scripts_dir + "sym_util.py"))
 			cmd.do("run %s" %(options.pymol_scripts_dir + "xyzMath.py"))
-			for nsubs in range(2,len(chains)+1):
-				merge_list = []
-				cmd.do("load %s" %(output_pdb_path + object1 + "_align_model.pdb"))
-				cmd.do("load %s" %(output_pdb_path + object1 + "_chain_A_align_model.pdb"))
-				cmd.do("set_name %s, align_model" %(object1 + "_align_model"))
-				cmd.do("set_name %s, chain_A" %(object1 + "_chain_A_align_model"))
-				for i in range(0,nsubs):
-					chain_ord = 65 + i
-					chain_id = chr(chain_ord)
-					if i != 0:
-						cmd.do("create chain_%s, chain_A" %(chain_id))
-						cmd.do("alter %s, chain='%s'" %("chain_"+chain_id, chain_id)) 
-						cmd.do("super %s, (align_model and chain %s)" %("chain_"+chain_id, chain_id))
-					merge_list.append("chain_" + chain_id )
+			merge_list = []
+			cmd.do("load %s" %(output_pdb_path + object1 + "_align_model.pdb"))
+			cmd.do("load %s" %(output_pdb_path + object1 + "_chain_A_align_model.pdb"))
+			cmd.do("set_name %s, align_model" %(object1 + "_align_model"))
+			cmd.do("set_name %s, chain_A" %(object1 + "_chain_A_align_model"))
+			for i in range(0,len(chains)):
+				chain_ord = 65 + i
+				chain_id = chr(chain_ord)
+				if i != 0:
+					cmd.do("create chain_%s, chain_A" %(chain_id))
+					cmd.do("alter %s, chain='%s'" %("chain_"+chain_id, chain_id)) 
+					cmd.do("super %s, (align_model and chain %s)" %("chain_"+chain_id, chain_id))
+				merge_list.append("chain_" + chain_id )
 
-				merge_string = " + ".join(merge_list)
-				cmd.do("create merged, (%s)" %(merge_string))
+			merge_string = " + ".join(merge_list)
+			cmd.do("create toalign, (%s)" %(merge_string))
 
-				# Run Will's pymol scripts to align the assembly along the z-axis and save the new transformed pdbs. Run twice because seems to be starting point dependent and will sometimes misalign the first time.
+#Will's dihedral pymol script here will align the assembly along the z-axis and save the new transformed pdbs
 
-				merged = "merged"
-				if nsubs == 2:
-					cmd.do("tmp = aligndx(merged,2)")
-					cmd.do("tmp = aligndx(merged,2)")
-				elif nsubs == 3:
-					cmd.do("tmp = aligndx(merged,3)")
-					cmd.do("tmp = aligndx(merged,3)")
-				elif nsubs == 4:
-					cmd.do("tmp = aligndx(merged,4)")
-					cmd.do("tmp = aligndx(merged,4)")
-				elif nsubs == 5:
-					cmd.do("tmp = aligndx(merged,5)")
-					cmd.do("tmp = aligndx(merged,5)")
-				else:
-					cmd.do("tmp = aligndx(merged,6)")
-					cmd.do("tmp = aligndx(merged,6)")
-				results_list.append(tmp)
-				cmd.reinitialize()
-
-
-
-### orig below
-
-# 			results_list = []
-# 			tmp = None
-# 			cmd.do("run %s" %(options.pymol_scripts_dir + "sym_util.py"))
-# 			cmd.do("run %s" %(options.pymol_scripts_dir + "xyzMath.py"))
-# 			merge_list = []
-# 			cmd.do("load %s" %(output_pdb_path + object1 + "_align_model.pdb"))
-# 			cmd.do("load %s" %(output_pdb_path + object1 + "_chain_A_align_model.pdb"))
-# 			cmd.do("set_name %s, align_model" %(object1 + "_align_model"))
-# 			cmd.do("set_name %s, chain_A" %(object1 + "_chain_A_align_model"))
-# 			for i in range(0,len(chains)):
-# 				chain_ord = 65 + i
-# 				chain_id = chr(chain_ord)
-# 				if i != 0:
-# 					cmd.do("create chain_%s, chain_A" %(chain_id))
-# 					cmd.do("alter %s, chain='%s'" %("chain_"+chain_id, chain_id)) 
-# 					cmd.do("super %s, (align_model and chain %s)" %("chain_"+chain_id, chain_id))
-# 				merge_list.append("chain_" + chain_id )
-
-# 			merge_string = " + ".join(merge_list)
-# 			cmd.do("create toalign, (%s)" %(merge_string))
-
-# #Will's dihedral pymol script here will align the assembly along the z-axis and save the new transformed pdbs
-
-# 			# #cmd.load(output_pdb_path + object1 +"_align_model.pdb","toalign")
-# 			# print "aligning dx"
-# 			# print cmd.get_object_list()
-# 			# print cmd.get_chains("toalign")
-# 			# results = aligndx("toalign")
-# 			# cmd.save(output_pdb_path + object1 +"_align_model.pdb","toalign")
-# 			# cmd.save(output_pdb_path + object1 +"_chain_A_align_model.pdb","toalign and chain A")
+			# #cmd.load(output_pdb_path + object1 +"_align_model.pdb","toalign")
+			# print "aligning dx"
+			# print cmd.get_object_list()
+			# print cmd.get_chains("toalign")
+			# results = aligndx("toalign")
+			# cmd.save(output_pdb_path + object1 +"_align_model.pdb","toalign")
+			# cmd.save(output_pdb_path + object1 +"_chain_A_align_model.pdb","toalign and chain A")
 			
 
-# 			#cmd.load(output_pdb_path + object1 +"_align_model.pdb","toalign")
-# 			print "aligning dx"
-# 			print cmd.get_object_list()
-# 			print cmd.get_chains("toalign")
-# 			try:
-# 				rmserr,angerr,axiserr = aligndx("toalign") #RMSD error, angle of symmetry error (degrees of global error), axis of symmetry error (higher is worse)
-# 				print "RMS error =", rmserr, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
-# 				cmd.save(output_pdb_path + object1 +"_align_model.pdb","toalign")
-# 				cmd.save(output_pdb_path + object1 +"_chain_A_align_model.pdb","toalign and chain A")
+			#cmd.load(output_pdb_path + object1 +"_align_model.pdb","toalign")
+			print "aligning dx"
+			print cmd.get_object_list()
+			print cmd.get_chains("toalign")
 
-# 			except:
-# 				print "Error: asymmetric, aligndx failed"
-# 				#print "RMS error =", rmserr, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
-
-### orig above
-
-
-
+			try:
+				print "hi"
+				aligndx("toalign")
+				print "hi2"
+				maxrms,angerr,axiserr = aligndx("toalign") #RMSD error, angle of symmetry error (degrees of global error), axis of symmetry error (higher is worse)
+				print "RMS error =", maxrms, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
+				cmd.save(output_pdb_path + object1 +"_align_model.pdb","toalign")
+				cmd.save(output_pdb_path + object1 +"_chain_A_align_model.pdb","toalign and chain A")
+				#maxrms used to be rmserr
+			except:
+				print "Error: asymmetric, aligndx failed"
+				print "RMS error =", maxrms, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
 
 # add best_sym here?
 # added from here
@@ -772,155 +724,144 @@ for pdb in pdb_list:
 
 		# cmd.reinitialize()
 				
-		best_sym = None
-		print "HERE, ", results_list
-		print "length of results_list: ", len(results_list)
-					# Pick the result that gave acceptable errors with the highest number of chains.  A C4 assembly could for instance happen to also align well as C2 if the right 2 chains were analyzed, but if it aligns well as C4,
-					# then this higher symmetry would typically be the correct choice. Caution: It could be a D2, however, which is not distinguished well from C4 by Will's alignment method.
-					# Could we look for orthoganol axes?
-		for index in range(0,len(results_list)):
-			print "INDEX: ",index
-			print "HERE HERE HERE"
-			print "HERE", float(results_list[2][0])
-			#OKAY -- print "HERE", float(options.max_distance_error)
-			print "HERE", float(results_list[2][1])
-			##OKAY --print "HERE", float(options.max_angle_error)
-
-			if ((float(results_list[2][0])) < float(options.max_distance_error)) and (float(results_list[2][1])) < float(options.max_angle_error):
-					#best_sym = index+2
-					best_sym = index
-
-		if best_sym != None:
+			best_sym = None
+				# Pick the result that gave acceptable errors with the highest number of chains.  A C4 assembly could for instance happen to also align well as C2 if the right 2 chains were analyzed, but if it aligns well as C4,
+				# then this higher symmetry would typically be the correct choice. Caution: It could be a D2, however, which is not distinguished well from C4 by Will's alignment method.
+				# Could we look for orthoganol axes?
+			for index in range(0,len(results_list)):
+				if ((float(results_list[index][2]) < float(options.max_distance_error)) and (float(results_list[index][3]) < float(options.max_angle_error))):
+						best_sym = index+2
+			if best_sym != None:
+				print "hi best_sym"
 					
-			if options.add_to_database:
-					entry_dict['sym'] = "D" + str(best_sym)
-					
-			merge_list = []
-			cmd.do("load %s" %(output_pdb_path + object1 + "_align_model.pdb"))
-			cmd.do("load %s" %(output_pdb_path + object1 + "_chain_A_align_model.pdb"))
-			cmd.do("set_name %s, align_model" %(object1 + "_align_model"))
-			cmd.do("set_name %s, chain_A" %(object1 + "_chain_A_align_model"))
-			super_string = ""
-			for i in range(0,best_sym):
-				chain_ord = 65 + i
-				chain_id = chr(chain_ord)
-				if i != 0:
-					cmd.do("create chain_%s, chain_A" %(chain_id))
-					cmd.do("alter %s, chain='%s'" %("chain_"+chain_id, chain_id))
-					super_string+="\nPROCESSING   Superposition_Report: chain %s" %(chain_id) + " RMSD = " + str(cmd.super("chain_%s" %(chain_id), "(align_model and chain %s)" %(chain_id), object=algn)[0])
-				merge_list.append("chain_" + chain_id )
-					
-			merge_string = " + ".join(merge_list)
-			cmd.do("create merged, (%s)" %(merge_string))
-			best_sym == 2		
-			merged = "merged"
-			if best_sym == 2:
-				cmd.do("tmp = aligndx(merged,2)")
-				cmd.do("tmp = aligndx(merged,2)")
-			elif best_sym == 3:
-				cmd.do("tmp = aligndx(merged,3)")
-				cmd.do("tmp = aligndx(merged,3)")
-			elif best_sym == 4:
-				cmd.do("tmp = aligndx(merged,4)")
-				cmd.do("tmp = aligndx(merged,4)")
-			elif best_sym == 5:
-				cmd.do("tmp = aligndx(merged,5)")
-				cmd.do("tmp = aligndx(merged,5)")
-			else:
-				cmd.do("tmp = aligndx(merged,6)")
-				cmd.do("tmp = aligndx(merged,6)")
-			print "FOUND BEST SYM TO BE: ", best_sym
-			results_list.append(tmp)
-			m = cmd.get_view(0)
-			ttt = [m[0], m[1], m[2], 0.0, m[3], m[4], m[5], 0.0, m[6], m[7], m[8], 0.0, 0.0,   0.0,  0.0, 1.0]
-			cmd.transform_object("merged",ttt)
-			cmd.do("create aligned_chainA, (merged and chain A)")
-			cmd.do("save %s, merged" %(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] +"_full_tmp.pdb"))
-			cmd.do("save %s, aligned_chainA" %(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_tmp.pdb"))
-					
-			if ((best_sym == len(chains)) and ((options.expected_symmetry == None) or ("D" + str(best_sym) == options.expected_symmetry))) :
-				log_string3 = "PROCESSING   Alignment_Summary: Chain A was copied, aligned to each of the other " + str(best_sym-1) + " chains, merged into one object and aligned with the z axis. \nPROCESSING   Alignment_Summary: The new aligned chain A was saved as " + output_pdb_path + "C" + str(best_sym) + "_" + output_pdbname +"\nPROCESSING   Construct_Chain_Length: " + str(construct_length) + "\nPROCESSING   Chain_Length: " + str(rescount)
-			elif ((best_sym != len(chains)) and (options.expected_symmetry != None) and ("D" + str(best_sym) != options.expected_symmetry)):
-				log_string3 = "PROCESSING   Alignment_Summary: Chain A was copied, aligned to each of the next " + str(best_sym-1) + " chains, merged into one object and aligned with the z axis. \nPROCESSING   Alignment_Summary: The new aligned chain a was saved as " + output_pdb_path + "c" + str(best_sym) + "_" + output_pdbname + "\nPROCESSING   Construct_Chain_Length:" + str(construct_length) + "\nPROCESSING   Chain_Length: " + str(rescount) + "\nPROCESSING   Expected_Symmetry_Warning: The determined symmetry, D" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry + ".\nPROCESSING   Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
-				ex_chains = True
-				#try:
-				#	entry_dict['notes']+=" Expected_Symmetry_Warning: The determined symmetry, C" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry + " Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
-				#except KeyError:
-				#	entry_dict['notes']="Expected_Symmetry_Warning: The determined symmetry, C" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry + " Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
-			elif ((best_sym == len(chains)) and (options.expected_symmetry != None) and ("C" + str(best_sym) != options.expected_symmetry)):
-				log_string3 = "PROCESSING   Alignment_Summary: Chain A was copied, aligned to each of the next " + str(best_sym-1) + " chains, merged into one object and aligned with the z axis.\nPROCESSING   Alignment_Summary: The new aligned chain a was saved as " + output_pdb_path + "c" + str(best_sym) + "_" + output_pdbname + "\nPROCESSING   Construct_Chain_Length:" + str(construct_length)  + "\nPROCESSING   Chain_Length: " + str(rescount) + "\nPROCESSING   Expected_Symmetry_Warning: The determined symmetry, D" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry + "."
-				#try:
-				#	entry_dict['notes']+=" Expected_Symmetry_Warning: The determined symmetry, C" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry
-				#except KeyError:
-				#	entry_dict['notes']="Expected_Symmetry_Warning: The determined symmetry, C" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry
-				
-			else:
-				log_string3 = "PROCESSING   Alignment_Summary: Chain A was copied, aligned to each of the next " + str(best_sym-1) + " chains, merged into one object and aligned with the z axis.\nPROCESSING   Alignment_Summary: The new aligned chain a was saved as " + output_pdb_path + "c" + str(best_sym) + "_" + output_pdbname + "\nPROCESSING   Construct_Chain_Length:" + str(construct_length)  + "\nPROCESSING   Chain_Length: " + str(rescount) + "\nPROCESSING   Extra_Chains_Warning: more chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
-				ex_chains = True
-				#try:
-				#	entry_dict['notes']+=" Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
-				#except KeyError:
-				#	entry_dict['notes']="Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
-				
-			alignment_report_string = "\nPROCESSING   Axis_Alignment_Report: Axis = " + str(tmp[0])
-			alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Center = " + str(tmp[1])
-			alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Distance_Error = " + str(tmp[2])
-			#alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Angle_Error = " + str(tmp[3])
-				
-			if options.add_to_database:
-				entry_dict['dist_err'] = "%.3f" % round(tmp[2],3)
-				entry_dict['ang_err'] = "%.3f" % round(tmp[3],3)
-				entry_dict['ex_chains'] = str(ex_chains)
-				entry_dict['ex_models'] = str(ex_models)
-				
-			log_string3 = "\n"+log_string3 + super_string + alignment_report_string
-			if not complete_consensus:
-				log_string3+="\nPROCESSING   Complete_Consensus: False"+resi_string
-			else:
-				log_string3+="\nPROCESSING   Complete_Consensus: True"
-				
-				# Add Header Info, comment_string, and new log_string3 to the pdb. Remove the temporary files that were missing the header info.
-				
-			comment_string+=log_string3
-				
-			full_tmp_file = open(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] +"_full_tmp.pdb","r")
-			full_tmp_string = full_tmp_file.read()
-			full_tmp_file.close()
-				
-			A_tmp_file = open(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_tmp.pdb","r")
-			A_tmp_string = A_tmp_file.read()
-			A_tmp_file.close()
-				
-			outfile_full_aligned_pdb = open(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_full.pdb", "w")
-			outfile_full_aligned_pdb.write(comment_string+"\n"+header_string+"\n"+full_tmp_string)
-			outfile_full_aligned_pdb.close()
-			
-			outfile_A_aligned_pdb = open(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname, "w")
-			outfile_A_aligned_pdb.write(comment_string+"\n"+header_string+"\n"+A_tmp_string)
-			outfile_A_aligned_pdb.close()
-				
-			subprocess.check_output("rm " + output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_full_tmp.pdb",stderr=subprocess.STDOUT,shell=True)
-			subprocess.check_output("rm " + output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_tmp.pdb",stderr=subprocess.STDOUT,shell=True)
-			if not options.view_in_pymol:
-				subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
-				subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
-				subprocess.check_output("rm " + output_pdb_path + object1 + ".pdb",stderr=subprocess.STDOUT,shell=True)
-				print input_pdbname + " reports success: Aligned to Z axis with D" + str(best_sym) + " symmetry."
 				if options.add_to_database:
+						entry_dict['sym'] = "D" + str(best_sym)
+					
+				merge_list = []
+				cmd.do("load %s" %(output_pdb_path + object1 + "_align_model.pdb"))
+				cmd.do("load %s" %(output_pdb_path + object1 + "_chain_A_align_model.pdb"))
+				cmd.do("set_name %s, align_model" %(object1 + "_align_model"))
+				cmd.do("set_name %s, chain_A" %(object1 + "_chain_A_align_model"))
+				super_string = ""
+				for i in range(0,best_sym):
+					chain_ord = 65 + i
+					chain_id = chr(chain_ord)
+					if i != 0:
+						cmd.do("create chain_%s, chain_A" %(chain_id))
+						cmd.do("alter %s, chain='%s'" %("chain_"+chain_id, chain_id))
+						super_string+="\nPROCESSING   Superposition_Report: chain %s" %(chain_id) + " RMSD = " + str(cmd.super("chain_%s" %(chain_id), "(align_model and chain %s)" %(chain_id), object=algn)[0])
+					merge_list.append("chain_" + chain_id )
+					
+				merge_string = " + ".join(merge_list)
+				cmd.do("create merged, (%s)" %(merge_string))
+					
+				merged = "merged"
+				if best_sym == 2:
+					cmd.do("tmp = aligndx(merged,2)")
+					cmd.do("tmp = aligndx(merged,2)")
+					print "hi"
+				elif best_sym == 3:
+					cmd.do("tmp = aligndx(merged,3)")
+					cmd.do("tmp = aligndx(merged,3)")
+				elif best_sym == 4:
+					cmd.do("tmp = aligndx(merged,4)")
+					cmd.do("tmp = aligndx(merged,4)")
+				elif best_sym == 5:
+					cmd.do("tmp = aligndx(merged,5)")
+					cmd.do("tmp = aligndx(merged,5)")
+				else:
+					cmd.do("tmp = aligndx(merged,6)")
+					cmd.do("tmp = aligndx(merged,6)")
+				m = cmd.get_view(0)
+				ttt = [m[0], m[1], m[2], 0.0, m[3], m[4], m[5], 0.0, m[6], m[7], m[8], 0.0, 0.0,   0.0,  0.0, 1.0]
+				cmd.transform_object("merged",ttt)
+				cmd.do("create aligned_chainA, (merged and chain A)")
+				cmd.do("save %s, merged" %(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] +"_full_tmp.pdb"))
+				cmd.do("save %s, aligned_chainA" %(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_tmp.pdb"))
+					
+				if ((best_sym == len(chains)) and ((options.expected_symmetry == None) or ("D" + str(best_sym) == options.expected_symmetry))) :
+					log_string3 = "PROCESSING   Alignment_Summary: Chain A was copied, aligned to each of the other " + str(best_sym-1) + " chains, merged into one object and aligned with the z axis. \nPROCESSING   Alignment_Summary: The new aligned chain A was saved as " + output_pdb_path + "C" + str(best_sym) + "_" + output_pdbname +"\nPROCESSING   Construct_Chain_Length: " + str(construct_length) + "\nPROCESSING   Chain_Length: " + str(rescount)
+				elif ((best_sym != len(chains)) and (options.expected_symmetry != None) and ("D" + str(best_sym) != options.expected_symmetry)):
+					log_string3 = "PROCESSING   Alignment_Summary: Chain A was copied, aligned to each of the next " + str(best_sym-1) + " chains, merged into one object and aligned with the z axis. \nPROCESSING   Alignment_Summary: The new aligned chain a was saved as " + output_pdb_path + "c" + str(best_sym) + "_" + output_pdbname + "\nPROCESSING   Construct_Chain_Length:" + str(construct_length) + "\nPROCESSING   Chain_Length: " + str(rescount) + "\nPROCESSING   Expected_Symmetry_Warning: The determined symmetry, D" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry + ".\nPROCESSING   Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
+					ex_chains = True
+					#try:
+					#	entry_dict['notes']+=" Expected_Symmetry_Warning: The determined symmetry, C" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry + " Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
+					#except KeyError:
+					#	entry_dict['notes']="Expected_Symmetry_Warning: The determined symmetry, C" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry + " Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
+				elif ((best_sym == len(chains)) and (options.expected_symmetry != None) and ("C" + str(best_sym) != options.expected_symmetry)):
+					log_string3 = "PROCESSING   Alignment_Summary: Chain A was copied, aligned to each of the next " + str(best_sym-1) + " chains, merged into one object and aligned with the z axis.\nPROCESSING   Alignment_Summary: The new aligned chain a was saved as " + output_pdb_path + "c" + str(best_sym) + "_" + output_pdbname + "\nPROCESSING   Construct_Chain_Length:" + str(construct_length)  + "\nPROCESSING   Chain_Length: " + str(rescount) + "\nPROCESSING   Expected_Symmetry_Warning: The determined symmetry, D" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry + "."
+					#try:
+					#	entry_dict['notes']+=" Expected_Symmetry_Warning: The determined symmetry, C" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry
+					#except KeyError:
+					#	entry_dict['notes']="Expected_Symmetry_Warning: The determined symmetry, C" + str(best_sym) +" , does not match with the expected symmetry, " + options.expected_symmetry
+					
+				else:
+					log_string3 = "PROCESSING   Alignment_Summary: Chain A was copied, aligned to each of the next " + str(best_sym-1) + " chains, merged into one object and aligned with the z axis.\nPROCESSING   Alignment_Summary: The new aligned chain a was saved as " + output_pdb_path + "c" + str(best_sym) + "_" + output_pdbname + "\nPROCESSING   Construct_Chain_Length:" + str(construct_length)  + "\nPROCESSING   Chain_Length: " + str(rescount) + "\nPROCESSING   Extra_Chains_Warning: more chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
+					ex_chains = True
+					#try:
+					#	entry_dict['notes']+=" Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
+					#except KeyError:
+					#	entry_dict['notes']="Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
+					
+				alignment_report_string = "\nPROCESSING   Axis_Alignment_Report: Axis = " + str(tmp[0])
+				alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Center = " + str(tmp[1])
+				alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Distance_Error = " + str(tmp[2])
+				alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Angle_Error = " + str(tmp[3])
+					
+				if options.add_to_database:
+					entry_dict['dist_err'] = "%.3f" % round(tmp[2],3)
+					entry_dict['ang_err'] = "%.3f" % round(tmp[3],3)
+					entry_dict['ex_chains'] = str(ex_chains)
+					entry_dict['ex_models'] = str(ex_models)
+					
+				log_string3 = "\n"+log_string3 + super_string + alignment_report_string
+				if not complete_consensus:
+					log_string3+="\nPROCESSING   Complete_Consensus: False"+resi_string
+				else:
+					log_string3+="\nPROCESSING   Complete_Consensus: True"
+					
+					# Add Header Info, comment_string, and new log_string3 to the pdb. Remove the temporary files that were missing the header info.
+					
+				comment_string+=log_string3
+					
+				full_tmp_file = open(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] +"_full_tmp.pdb","r")
+				full_tmp_string = full_tmp_file.read()
+				full_tmp_file.close()
+					
+				A_tmp_file = open(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_tmp.pdb","r")
+				A_tmp_string = A_tmp_file.read()
+				A_tmp_file.close()
+					
+				outfile_full_aligned_pdb = open(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_full.pdb", "w")
+				outfile_full_aligned_pdb.write(comment_string+"\n"+header_string+"\n"+full_tmp_string)
+				outfile_full_aligned_pdb.close()
+				
+				outfile_A_aligned_pdb = open(output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname, "w")
+				outfile_A_aligned_pdb.write(comment_string+"\n"+header_string+"\n"+A_tmp_string)
+				outfile_A_aligned_pdb.close()
+					
+				subprocess.check_output("rm " + output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_full_tmp.pdb",stderr=subprocess.STDOUT,shell=True)
+				subprocess.check_output("rm " + output_pdb_path + "D" + str(best_sym) + "_" + output_pdbname[:-4] + "_tmp.pdb",stderr=subprocess.STDOUT,shell=True)
+				if not options.view_in_pymol:
+					subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
+					subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
+					subprocess.check_output("rm " + output_pdb_path + object1 + ".pdb",stderr=subprocess.STDOUT,shell=True)
+					print input_pdbname + " reports success: Aligned to Z axis with D" + str(best_sym) + " symmetry."
+					if options.add_to_database:
+							new_rows.append(add_entry(database_headers=database_headers,refids=refids,my_dict=entry_dict))
+				elif options.view_in_pymol and (len(pdb_list) == 1):
+					subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
+					subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
+					subprocess.check_output("rm " + output_pdb_path + object1 + ".pdb",stderr=subprocess.STDOUT,shell=True)
+					print input_pdbname + " reports success: Aligned to Z axis with D" + str(best_sym) + " symmetry."
+					if options.add_to_database:
 						new_rows.append(add_entry(database_headers=database_headers,refids=refids,my_dict=entry_dict))
-			elif options.view_in_pymol and (len(pdb_list) == 1):
-				subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
-				subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
-				subprocess.check_output("rm " + output_pdb_path + object1 + ".pdb",stderr=subprocess.STDOUT,shell=True)
-				print input_pdbname + " reports success: Aligned to Z axis with D" + str(best_sym) + " symmetry."
-				if options.add_to_database:
-					new_rows.append(add_entry(database_headers=database_headers,refids=refids,my_dict=entry_dict))
-			#cmd.do("run %s/axes.py" %(options.pymol_scripts_dir))
-		else:
+					cmd.do("run %s/axes.py" %(options.pymol_scripts_dir))
+			else:
 				#subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 				#subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 				#subprocess.check_output("rm " + output_pdb_path + object1 + ".pdb",stderr=subprocess.STDOUT,shell=True)
-			print input_pdbname + " reports failure: Not found to possess D2, D3, D4, D5, or D6 symmetry."
+				print input_pdbname + " reports failure: Not found to possess D2, D3, D4, D5, or D6 symmetry."
 # added to here
 
 		biounit_number+=1

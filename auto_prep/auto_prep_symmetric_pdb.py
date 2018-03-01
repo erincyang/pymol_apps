@@ -828,7 +828,7 @@ for pdb in pdb_list:
 					print input_pdbname + " reports success: Aligned to Z axis with C" + str(best_sym) + " symmetry." 
 					if options.add_to_database:
 						new_rows.append(add_entry(database_headers=database_headers,refids=refids,my_dict=entry_dict))
-					cmd.do("run %s/axes.py" %(options.pymol_scripts_dir))
+					#cmd.do("run %s/axes.py" %(options.pymol_scripts_dir))
 			else:
 				subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 				subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)

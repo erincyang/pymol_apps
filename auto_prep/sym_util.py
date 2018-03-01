@@ -1,51 +1,229 @@
-	# -*- mode:python;tab-width:2;indent-tabs-mode:t;show-trailing-whitespace:t;rm-trailing-spaces:t -*-
+# -*- mode:python;tab-width:2;indent-tabs-mode:t;show-trailing-whitespace:t;rm-trailing-spaces:t -*-
 import sys,os,inspect,functools
 newpath = os.path.dirname(inspect.getfile(inspect.currentframe())) # script directory
 if not newpath in sys.path: sys.path.append(newpath)
 import string,re,gzip,itertools
+import collections
 from pymol_util import *
 import operator as op
+from xyzMath import *
+from itertools import product,ifilter
+from cluster import HierarchicalClustering
 
-def guesscxaxis(sele,nfold,chains=None):	
-	sele = "(("+sele+") and (name CA))"
-	if not chains: chains = cmd.get_chains(sele)
-	if len(chains) != nfold: 
+
+nsymmetrizecx = 0
+
+
+
+
+def get_xforms_by_chain(sele="all",verbose=False,userms=False):
+	print "Hi, this is sym_util's get_xforms_by_chain"
+	v = cmd.get_view()
+	cen = com("("+sele+") and (name CA and not HET)")
+	chains = cmd.get_chains(sele)
+	xforms = dict()
+	maxrms = 0.0
+	for c1,c2 in filter( lambda t: True, product(chains,chains) ):
+		refsele = "((%s) and chain %s and name CA and not HET)"%(sele,c1)
+		movsele = "((%s) and chain %s and name CA and not HET)"%(sele,c2)
+		if userms: x,rms = getrelframe_rmsalign( movsele, refsele, Xform(-cen) )
+		else:      x,rms = getrelframe( movsele, refsele, Xform(-cen)), 0.0
+		maxrms = max(maxrms,rms)
+		xforms[c1,c2] = x
+		#if c1 in "AB" and c2 in "AB":
+		#	print movsele
+		#	print refsele
+		#	print x.pretty()
+		#	print
+	# raise Exception
+	cmd.set_view(v)
+	return xforms, maxrms
+
+def find_symelems(sele_or_xforms="all",verbose=False):
+	print "Hi, this is sym_util's find_symelems"
+	xforms = sele_or_xforms
+	if isinstance(sele_or_xforms,basestring): xforms, maxrms = get_xforms_by_chain(sele_or_xforms,verbose=True)
+	elif not isinstance(sele_or_xforms,dict): raise ValueError
+	symelems = list()
+	maxangerr = 0.0
+	for c,x in xforms.items():
+		assert len(c)==2
+		assert isinstance(x,Xform)
+		if c[0]==c[1]: continue
+		dis = x.t.length()
+		if dis > 5.0: continue
+		axis,ang = x.rotation_axis()
+		nfold = round(math.pi*2.0/ang)
+		angerr = abs(ang-math.pi*2.0/nfold)*180.0/math.pi
+		if verbose: print "candidate symelem:",nfold, c, angerr, axis
+		if angerr > 360.0/nfold/8.0: continue # require unambiguous symelems
+		maxangerr = max(maxangerr,angerr*nfold)
+		symelems.append( (nfold,axis,c,angerr) )
+	symelemdis = lambda x,y: line_line_angle_degrees(x[1],y[1]) if x[0]==y[0] else 9e9
+	if verbose:
+		for se1,se2 in filter( lambda t: t[0]<t[1], product(symelems,symelems) ):
+			if se1[0]==se2[0]:
+				print se1
+				print se2
+				print symelemdis(se1,se2), "degrees"
+				print
+	hier = HierarchicalClustering(symelems, symelemdis )
+	thresh = 6.0
+	clusters = hier.getlevel(thresh);
+	print "number of symmetry element clusters at threshold",thresh,"degrees is" , len(clusters)
+	centers0 = list()
+	maxaxiserr = 0.0
+	for clust in clusters:
+		print "symelem cluster:",clust
+		center = list(clust[0])
+		center[2] = list((center[2],))
+		for i in range(1,len(clust)):
+			ax = clust[i][1]
+			center[1] = center[1] + ( ax if ax.dot(center[1]) > 0 else -ax )
+			center[2].append(clust[i][2])
+			center[3] = max(center[3],clust[i][3])
+		center[1].normalize()
+		centers0.append(center)
+		axiserr = 0.0
+		for c in clust:	axiserr = max( axiserr, 1.0-abs(center[1].dot(c[1])) )
+		maxaxiserr = max(maxaxiserr,axiserr)
+	# sort on nfold, then on number of chain pairs in cluster
+	centers0 = sorted( centers0, cmp = lambda x,y: cmp(y[0],x[0]) if x[0]!=y[0] else cmp(len(y[2]),len(x[2])) )
+	centers = list()
+	for center in centers0:
+		if verbose: print "DEBUG prune center:",center
+		seenit = False
+		for censeen in centers:
+			remainder = abs( ( censeen[0] / center[0] ) % 1.0)
+			if verbose: print "   ",remainder,censeen
+			if remainder > 0.01: continue # not a symmetry multiple
+			if 1.0-abs(center[1].dot(censeen[1])) < 0.01:
+				seenit = True # axis are same
+		if not seenit:
+			centers.append(center)
+	print "centers:"
+	cen_of_geom = com("("+sele_or_xforms+") and (name CA and not HET)")
+	for center in centers:
+		print center
+		# if center[0]>2.1: continue
+		#showvecfrompoint(50*center[1],cen_of_geom)
+	return centers, maxrms, maxangerr, maxaxiserr
+
+def guessdxaxes(sele="all",verbose=False):
+	print "Hi, this is sym_util's guessdxaxes"
+	nfold = len(cmd.get_chains(sele))
+	assert nfold % 2 is 0
+	nfold = 2
+	#print "# chains: ", nfold
+	symelems, maxrms, angerr, axiserr = find_symelems(sele,verbose=verbose)
+	for s in symelems: print s
+	print "length of symelems: " , len(symelems[0]) , "...symelems: ", symelems
+	assert len(symelems[0]) > 1
+	print "symelems[0][0]: ", symelems[0][0]
+	print "float(nfold): ", float(nfold)
+	assert symelems[0][0] == float(nfold)
+	assert symelems[0][0] == float(2)
+	axis_high = symelems[0][1]
+	axis_low  = symelems[0][1] ###not sure what this is...
+	return axis_high, axis_low, maxrms, angerr, axiserr
+
+def aligndx(sele='all',verbose=False):
+	print "Hi, this is sym_util's aligndx"
+	trans(sele,-com(sele+" and name CA and not HET"))
+	haxis, laxis, maxrms, angerr, axiserr = guessdxaxes(sele,verbose=verbose)
+	xalign = alignvectors( haxis, laxis, Uz, Ux )
+	xform(sele,xalign)
+	return maxrms, angerr, axiserr
+	print "Hello again!"
+
+def trim_sym(sel='all',na=1,nb=1): ##trim_sym('visible',3,3)
+	a = [x[1] for x in getres(sel + " and chain A")]
+	b = [x[1] for x in getres(sel + " and chain B")]
+	for ia in range( len(a)/na, len(a) ):
+		cmd.remove( sel + " and chain A and resi " + str(a[ia]) )
+	for ib in range( len(b)/nb, len(b) ):
+		cmd.remove( sel + " and chain B and resi " + str(b[ib]) )
+
+cmd.extend('trim_sym',trim_sym)
+
+def guesscxaxis(sele,nfold=None,chains0=list(),extrasel="name CA"):
+	sele = "(("+sele+") and ("+extrasel+") and (not het))"
+	check = False
+	if not chains0:
+		chains0.extend(cmd.get_chains(sele))
+		check = True
+	if not nfold:
+		nfold = len(chains0)
+		check = True
+	# print chains0
+	if check and len(chains0) != nfold:
+		print chains0
 		print "num chains != n-fold"
 		return None
+	print "chains0:", chains0
+	chains = list()
+	for i,c in enumerate(chains0):
+		if isinstance(c,basestring):
+			chains.append( (c,) )
+		elif isinstance(c,collections.Iterable):
+			chains.append( c )
+		else:
+			raise ValueError("chain must be string or list of strings")
 	atoms = cmd.get_model(sele).atom
-	idx = {}
-	for i,c in enumerate(chains): idx[c] = i
+	chain_index = {}
+	for i,clist in enumerate(chains):
+		for c in clist:
+			chain_index[c] = i
 	coords = [list() for c in chains]
+	print len(coords),[len(x) for x in coords]
 	for a in atoms:
-		if a.chain in idx:
-			coords[idx[a.chain]].append(Vec(a.coord))
-	if max(len(x) for x in coords) != min(len(x) for x in coords):
-		print "chains not same length",
-		return None
-	cen = reduce(op.add,(x for c in coords for x in c),V0) / len(coords[0]*len(coords))
-	guesses = []
-	axis = Vec(0,0,0)
-	diserr = 0
-	for xyzs in izip(*coords):
-		a = reduce(op.add,(xyz-cen for xyz in xyzs))/len(xyzs)
-		da = a if a.dot(Uz) > 0 else -a
-		axis += da
-		guesses.append(da)
-		dis = [a.distance(cen) for a in xyzs]
-		avgdis = sum(dis)/len(dis)
-		diserr += sum((x-avgdis)**2 for x in dis)
-	axis.normalize()
-	diserr = math.sqrt(diserr/len(coords)/len(coords[0]))
-	angerr = math.sqrt(sum(projperp(axis,a).length_squared() for a in guesses)/len(guesses))
-	return axis,cen,diserr,angerr
+		if a.chain in chain_index:
+			coords[chain_index[a.chain]].append(Vec(a.coord))
+	for c in coords:
+		print len(c)
+	return cyclic_axis(coords)
 
-def aligncx(sele,nfold,alignsele=None,tgtaxis=Uz,chains=None):
+def aligncx(sele,nfold,alignsele=None,tgtaxis=Uz,chains=list(),extrasel="name CA"):
 	if not alignsele: alignsele = sele
-	tmp = guesscxaxis(sele,nfold,chains)
+	tmp = guesscxaxis(alignsele,nfold,chains,extrasel)
 	if not tmp: return None
-	axis,cen,diserr,angerr = guesscxaxis(sele,nfold,chains)
-	trans(sele,-cen)
+	axis,cen,diserr,angerr = tmp
+#	trans(sele,-cen)
 	alignaxis(sele,tgtaxis,axis,xyz.Vec(0,0,0))
+	return tmp
+
+
+# def alignd2(sele='all',chains=list()):
+# 	alignsele = "(("+sele+") and (name CA))"
+# 	if not chains: chains.extend(cmd.get_chains(alignsele))
+# 	if 4 is not len(chains): raise NotImplementedError("D2 must have chains")
+# 	ga1 = guesscxaxis( alignsele, 2,[ (chains[0],chains[1]), (chains[2],chains[3]) ] )
+# 	ga2 = guesscxaxis( alignsele, 2,[ (chains[0],chains[2]), (chains[1],chains[3]) ] )
+# 	assert ga1 is not None and ga2 is not None
+# 	err = 90.0 - line_line_angle_degrees(ga1[0],ga2[0])
+# 	x = alignvectors(ga1[0],ga2[0],Uz,Uy)
+# 	xform(sele,x)
+# 	trans(sele,-com(alignsele))
+# 	return err
+
+def symmetrize(sele="not symmetrized_*",alignsele=None,chains=list(),delete=True):
+	global nsymmetrizecx
+	if delete: cmd.delete("symmetrized_*")
+	tmp = guesscxaxis(sele,None,chains)
+	if not tmp: return None
+	axis,cen,diserr,angerr = tmp
+	# print "symmetrize TMP__C%i, distance err %f, algle error %f"%(len(chains),diserr,angerr)
+	for i,c in enumerate(chains):
+		newobj = "symmetrized_%i_%s"%(nsymmetrizecx,c)
+		cmd.create(newobj,"(%s) and chain %s"%(sele,chains[0]))
+		cmd.alter(newobj,"chain='%s'"%c)
+		rot(newobj,axis,360.0*float(i)/float(len(chains)),cen)
+		print "rot(",newobj,',',axis,',',360.0*float(i)/float(len(chains)),',',cen,')'
+	newobj = "symmetrized_%i"%(nsymmetrizecx)
+	cmd.create(newobj,"symmetrized_%i_*"%(nsymmetrizecx))
+	cmd.delete("symmetrized_%i_*"%nsymmetrizecx)
+	# print "rms",cmd.align(newobj,sele)
+	nsymmetrizecx += 1
 	return tmp
 
 guessc2axis = functools.partial(guesscxaxis,nfold=2)
@@ -59,136 +237,11 @@ alignc4 = functools.partial(aligncx,nfold=4)
 alignc5 = functools.partial(aligncx,nfold=5)
 alignc6 = functools.partial(aligncx,nfold=6)
 
-# def c2axis(sele,alignsele=None,chains=["A","B"]):
-# 	if alignsele is None: alignsele = sele
-#         #cmd.create('tmp98367598',sele)
-#         #sele = 'tmp98367598'
-# 	cmd.remove(sele+" and resn HOH")
-# 	cen = com(alignsele)
-# 	a = cmd.get_model(alignsele+" and chain "+chains[0]+" and name CA").atom
-# 	b = cmd.get_model(alignsele+" and chain "+chains[1]+" and name CA").atom
-# 	# print len(a),len(b)
-# 	if len(a) != len(b) or len(a) == 0:
-# 		print "ERROR on %s: subunits are not the same size!"%alignsele
-# 		return False
-# 	axis = xyz.Vec(0,0,0)
-# 	for i in range(len(a)):
-# 		axis1 = ( xyz.Vec(a[i].coord)+xyz.Vec(b[i].coord)-2*cen ).normalized()
-# 		if axis.length() > 0.0001 and axis.dot(axis1) < 0:
-# 			axis1 *= -1
-# 		axis += axis1
-# 		# print axis1
-# 	axis.normalize()
-#         #cmd.delete('tmp98367598')
-# 	return axis
 
-# def alignc2(sele,alignsele=None,tgtaxis=xyz.Vec(0,0,1),chains=["A","B"]):
-# 	if alignsele is None: alignsele = sele
-# 	axis = c2axis(sele,alignsele,chains)
-# 	if not axis: return -1
-# 	# print "axis of rotation:",axis
-# 	alignaxis(sele,tgtaxis,axis,xyz.Vec(0,0,0))	
-# 	# seleA = "("+alignsele+") and chain %s"%chains[0]
-# 	# seleB = "("+alignsele+") and chain %s"%chains[1]
-# 	# print seleA
-# 	# print seleB
-# 	# rot(seleA,tgtaxis,180.0)
-# 	# r = cmd.rms_cur(seleA,seleB)
-# 	# rot(seleA,tgtaxis,180.0)	
-# 	return 0
 
-# def c3axis(sele,alignsele=None,chains=["A","B","C"]):
-# 	if alignsele is None: alignsele = sele
-#         #cmd.create('tmp98367598',sele)
-#         #sele = 'tmp98367598'
-# 	cmd.remove(sele+" and resn HOH")
-# 	cen = com(alignsele)
-# 	a = cmd.get_model(alignsele+" and chain "+chains[0]+" and name CA").atom
-# 	b = cmd.get_model(alignsele+" and chain "+chains[1]+" and name CA").atom
-# 	c = cmd.get_model(alignsele+" and chain "+chains[2]+" and name CA").atom
-# 	# print "subunit lengths:",len(a),len(b),len(c)
-# 	if len(a) != len(b) or len(a) != len(c) or len(a) == 0:
-# 		print "ERROR on %s: subunits are not the same size!"%alignsele
-# 		return False
-# 	axis = xyz.Vec(0,0,0)
-# 	for i in range(len(a)):
-# 		axis1 = ( xyz.Vec(a[i].coord)+xyz.Vec(b[i].coord)+xyz.Vec(c[i].coord) - 3*cen ).normalized()
-# 		if axis.length() > 0.0001 and axis.dot(axis1) < 0:
-# 			axis1 *= -1
-# 		axis += axis1
-# 		# print axis1
-# 	axis.normalize()
-#         #cmd.delete('tmp98367598')
-# 	return axis
-
-# def alignc3(sele,alignsele=None,tgtaxis=xyz.Vec(0,0,1),chains=["A","B","C"]):
-# 	if alignsele is None: alignsele = sele
-# 	cmd.remove(sele+" and resn HOH")
-# 	axis = c3axis(sele,alignsele,chains)
-# 	# print "axis of rotation:",axis
-# 	alignaxis(sele,tgtaxis,axis,xyz.Vec(0,0,0))
-# 	return True
-
-# def c4axis(sele,alignsele=None,chains=["A","B","C","D"]):
-# 	if alignsele is None: alignsele = sele
-# 	cmd.remove(sele+" and resn HOH")
-# 	trans(sele,-com(alignsele))
-# 	a = cmd.get_model(alignsele+" and chain "+chains[0]+" and name CA").atom
-# 	b = cmd.get_model(alignsele+" and chain "+chains[1]+" and name CA").atom
-# 	c = cmd.get_model(alignsele+" and chain "+chains[2]+" and name CA").atom
-# 	d = cmd.get_model(alignsele+" and chain "+chains[3]+" and name CA").atom
-# 	# print "subunit lengths:",len(a),len(b),len(c)
-# 	if len(a) != len(b) or len(a) != len(c) or len(a) == 0 or len(d) != len(a):
-# 		print "ERROR on %s: subunits are not the same size!"%alignsele
-# 		return False
-# 	axis = xyz.Vec(0,0,0)
-# 	for i in range(len(a)):
-# 		axis1 = ( xyz.Vec(a[i].coord)+xyz.Vec(b[i].coord)+xyz.Vec(c[i].coord)+xyz.Vec(d[i].coord) ).normalized()
-# 		if axis.length() > 0.0001 and axis.dot(axis1) < 0:
-# 			axis1 *= -1
-# 		axis += axis1
-# 		# print axis1
-# 	axis.normalize()
-# 	return axis
-
-# def alignc4(sele,alignsele=None,tgtaxis=xyz.Vec(0,0,1),chains=["A","B","C","D"]):
-# 	if alignsele is None: alignsele = sele
-# 	cmd.remove(sele+" and resn HOH")
-# 	axis = c3axis(sele,alignsele,chains)
-# 	# print "axis of rotation:",axis
-# 	alignaxis(sele,tgtaxis,axis,xyz.Vec(0,0,0))
-# 	return True
-
-# def c5axis(sele,alignsele=None,chains=["A","B","C","D","E"]):
-# 	if alignsele is None: alignsele = sele
-# 	cmd.remove(sele+" and resn HOH")
-# 	trans(sele,-com(alignsele))
-# 	a = cmd.get_model(alignsele+" and chain "+chains[0]+" and name CA").atom
-# 	b = cmd.get_model(alignsele+" and chain "+chains[1]+" and name CA").atom
-# 	c = cmd.get_model(alignsele+" and chain "+chains[2]+" and name CA").atom
-# 	d = cmd.get_model(alignsele+" and chain "+chains[3]+" and name CA").atom
-# 	e = cmd.get_model(alignsele+" and chain "+chains[4]+" and name CA").atom
-# 	# print "subunit lengths:",len(a),len(b),len(c)
-# 	if len(a) != len(b) or len(a) != len(c) or len(a) == 0:
-# 		print "ERROR on %s: subunits are not the same size!"%alignsele
-# 		return False
-# 	axis = xyz.Vec(0,0,0)
-# 	for i in range(len(a)):
-# 		axis1 = ( xyz.Vec(a[i].coord)+xyz.Vec(b[i].coord)+xyz.Vec(c[i].coord)+xyz.Vec(d[i].coord)+xyz.Vec(e[i].coord) ).normalized()
-# 		if axis.length() > 0.0001 and axis.dot(axis1) < 0:
-# 			axis1 *= -1
-# 		axis += axis1
-# 		# print axis1
-# 	axis.normalize()
-# 	return axis
-
-# def alignc5(sele,alignsele=None,tgtaxis=xyz.Vec(0,0,1),chains=["A","B","C","D","E"]):
-# 	if alignsele is None: alignsele = sele
-# 	cmd.remove(sele+" and resn HOH")
-# 	axis = c5axis(sele=sele,alignsele=alignsele,chains=chains)
-# 	print "axis of rotation:",axis,"to",tgtaxis
-# 	alignaxis(sele,tgtaxis,axis,xyz.Vec(0,0,0))
-# 	return True
+def showcxaxis(sele,nfold=None,chains=list(),length=30,col=(1,1,1),lbl="Cx Axis"):
+	g = guesscxaxis(sele,nfold,chains)
+	showvecfrompoint(g[0]*2*length,g[1]-g[0]*length,col=col,lbl=lbl)
 
 def myint(s):
    i = len(s)
@@ -196,145 +249,6 @@ def myint(s):
    if not i: return None
    return int(s[:i])
 
-def mki213(N, sel = 'all'):
-	v = cmd.get_view()
-	cmd.delete("i213_*")
-	cmd.delete('base80345769083457')
-	cmd.delete('tmp80345769083457')
-	c2 = com(sel)
-	c3 = xyz.Vec(0, 0, 0)
-	cmd.create( 'tmp80345769083457', sel)
-	a2 = c2axis('tmp80345769083457')
-	cmd.delete( 'tmp80345769083457')
-	a3 = xyz.Vec(0, 0, 1)
-	cmd.create('base80345769083457', sel+" and chain A and visible")
-	seenit = []
-	R2 = [xyz.rotation_matrix_degrees(a2, 0), xyz.rotation_matrix_degrees(a2, 180), ]
-	R3 = [xyz.rotation_matrix_degrees(a3, 0), xyz.rotation_matrix_degrees(a3, 120), xyz.rotation_matrix_degrees(a3, 240), ]
-	C = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	print a2, c2, a3, c3
-	for i21 in range(2):
-		for i32 in range(3 if N > 1 else 1):
-			for i22 in range(2 if N > 2 else 1):
-				for i33 in range(3 if N > 3 else 1):
-					for i23 in range(2 if N > 4 else 1):
-						for i34 in range(3 if N > 5 else 1):
-							for i24 in range(2 if N > 6 else 1):
-								for i35 in range(3 if N > 7 else 1):
-									for i25 in range(2 if N > 8 else 1):
-										test = xyz.Vec(0, 0, 0)
-										test = R2[i21]*(test-c2)+c2
-										test = R3[i32]*(test-c3)+c3
-										test = R2[i22]*(test-c2)+c2
-										test = R3[i33]*(test-c3)+c3
-										test = R2[i23]*(test-c2)+c2
-										test = R3[i34]*(test-c3)+c3
-										test = R2[i24]*(test-c2)+c2
-										test = R3[i35]*(test-c3)+c3
-										test = R2[i25]*(test-c2)+c2
-										#print test
-										seen = False
-										for xs in seenit:
-											if (xs-test).length() < 0.1:
-												seen = True
-												break
-										if seen: continue
-										else: seenit.append(test)
-										n = "i213_%i%i%i%i%i%i%i%i%i"%(i25, i35, i24, i34, i23, i33, i22, i32, i21)
-										cmd.create(n, 'base80345769083457')
-										rot(n, a2, i21*180.0, c2)
-										rot(n, a3, i32*120.0, c3)
-										rot(n, a2, i22*180.0, c2)
-										rot(n, a3, i33*120.0, c3)
-										rot(n, a2, i23*180.0, c2)
-										rot(n, a3, i34*120.0, c3)
-										rot(n, a2, i24*180.0, c2)
-										rot(n, a3, i35*120.0, c3)
-										rot(n, a2, i25*180.0, c2)
-	print len(seenit)
-	cmd.delete('base80345769083457')
-	cmd.set_view(v)
-
-def viewi213(sel = "all"):
-	cmd.hide('ev')
-	cmd.show('rib')
-	mki213(sel)
-	cmd.show('car', 'not i213*')
-	cmd.hide('rib', 'not i213*')
-	cmd.show('lines', '(byres (%s and not i213* and chain A) within 7.0 of (%s and not i213* and chain B))'%(sel, sel))
-	cmd.show('lines', '(byres (%s and not i213* and chain B) within 7.0 of (%s and not i213* and chain A))'%(sel, sel))
-
-
-
-
-
-
-
-
-
-def mkp23(N, R=43.5, i=0, sel = 'all'):
-	v = cmd.get_view()
-	cmd.delete("p23_*")
-	cmd.delete('base80345769083457')
-	cmd.delete('tmp80345769083457')
-	c2 = xyz.Vec(0, 0, 0)
-	c3 = xyz.Vec(R,R,-R)
-	cmd.create( 'tmp80345769083457', sel)
-	cmd.delete( 'tmp80345769083457')
-	a3 = [xyz.Vec(0,0,0),xyz.Vec(1,1,1),xyz.Vec(-1,-1,-1)]
-	a2 = [xyz.Vec(0,0,0),xyz.Vec(1,0,0),xyz.Vec(0,1,0),xyz.Vec(0,0,1)]
-	cmd.create('base80345769083457', sel+" and visible")
-	seenit = []
-	R2 = [xyz.rotation_matrix_degrees(a2[1],  0), # hack
-	      xyz.rotation_matrix_degrees(a2[1],180),
-	      xyz.rotation_matrix_degrees(a2[2],180),
-	      xyz.rotation_matrix_degrees(a2[3],180) ]
-	R3 = [xyz.rotation_matrix_degrees(a3[1],  0), # hack!
-	      xyz.rotation_matrix_degrees(a3[1],120),
-	      xyz.rotation_matrix_degrees(a3[2],120), ]
-	C = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	print a2, c2, a3, c3
-	for i21 in range(4):
-		for i32 in range(3 if N > 1 else 1):
-			for i22 in range(4 if N > 2 else 1):
-				for i33 in range(3 if N > 3 else 1):
-					for i23 in range(4 if N > 4 else 1):
-						for i34 in range(3 if N > 5 else 1):
-							for i24 in range(4 if N > 6 else 1):
-								for i35 in range(3 if N > 7 else 1):
-									for i25 in range(4 if N > 8 else 1):
-										test = xyz.Vec(1, 1, 1)
-										test = R2[i21]*(test-c2)+c2
-										test = R3[i32]*(test-c3)+c3
-										test = R2[i22]*(test-c2)+c2
-										test = R3[i33]*(test-c3)+c3
-										test = R2[i23]*(test-c2)+c2
-										test = R3[i34]*(test-c3)+c3
-										test = R2[i24]*(test-c2)+c2
-										test = R3[i35]*(test-c3)+c3
-										test = R2[i25]*(test-c2)+c2
-										#print test
-										seen = False
-										for xs in seenit:
-											if (xs-test).length() < 0.1:
-												seen = True
-												break
-										if seen: continue
-										else: seenit.append(test)
-										n = "p23_%i%i%i%i%i%i%i%i%i"%(i25, i35, i24, i34, i23, i33, i22, i32, i21)
-										cmd.create(n, 'base80345769083457')
-										if i21 > 0: rot(n, a2[i21], 180.0, c2)
-										if i32 > 0: rot(n, a3[i32], 120.0, c3)
-										if i22 > 0: rot(n, a2[i22], 180.0, c2)
-										if i33 > 0: rot(n, a3[i33], 120.0, c3)
-										if i23 > 0: rot(n, a2[i23], 180.0, c2)
-										if i34 > 0: rot(n, a3[i34], 120.0, c3)
-										if i24 > 0: rot(n, a2[i24], 180.0, c2)
-										if i35 > 0: rot(n, a3[i35], 120.0, c3)
-										if i25 > 0: rot(n, a2[i25], 180.0, c2)
-	print "seen:",len(seenit)
-	cmd.delete('base80345769083457')
-	cmd.set_view(v)
 
 def selbycomp(trn=0):
 	cmd.select("TRI1","TRI and chain A+B+C")
@@ -374,8 +288,8 @@ def selbycomp(trn=0):
 		# trans("TRI%i"%i,trn*c.normalized())
 		obj = [
 			cgo.CYLINDER,
-		   	0.0, 0.0, 0.0,
-		   	1.6*c.x, 1.6*c.y, 1.6*c.z,
+			0.0, 0.0, 0.0,
+			1.6*c.x, 1.6*c.y, 1.6*c.z,
 			1.5,
 			0.1,0.1,0.1,0.1,0.1,0.1,
 		]
@@ -387,8 +301,8 @@ def selbycomp(trn=0):
 		# trans("DIM%i"%i,trn*com("DIM%i"%i).normalized())
 		obj = [
 			cgo.CYLINDER,
-		   	0.0, 0.0, 0.0,
-		   	1.3*c.x, 1.3*c.y, 1.3*c.z,
+			0.0, 0.0, 0.0,
+			1.3*c.x, 1.3*c.y, 1.3*c.z,
 			1.0,
 			0,0,1,0,0,1
 		]
@@ -399,61 +313,38 @@ def getframe(obj):
 	x = xyz.Vec(m.atom[       0     ].coord)
 	y = xyz.Vec(m.atom[len(m.atom)/2].coord)
 	z = xyz.Vec(m.atom[      -1     ].coord)
-	return xyz.stub(x,y,z)
+	frame = xyz.stub(x,y,z)
+	# print "getframe:",frame
+	return frame
 
 def getrelframe(newobj,refobj,Forigin=None):
+	"""get transform between two objects, assume the obj's are identical"""
 	if Forigin is None: Forigin = xyz.Xform(xyz.Imat,xyz.Vec(0,0,0))
-	Fref = getframe(refobj)
-	Fnew = getframe(newobj)
+	Fref = Forigin*getframe(refobj+" and name CA")
+	Fnew = Forigin*getframe(newobj+" and name CA")
 	Fdelta = Fnew * ~Fref
-	#print (Fdelta * Forigin).pretty()
-	return Fdelta * Forigin
+	return Fdelta
 
-
+def getrelframe_rmsalign(movsel,refsel,Forigin=None):
+	"""get transform between two objects using rmsalign"""
+	tmpref = "TMP__getrelframe_rmsalign_REF"
+	tmpmov = "TMP__getrelframe_rmsalign_MOV"	
+	cmd.create(tmpref,refsel)
+	cmd.create(tmpmov,refsel)
+	# cmd.super(tmpref,refsel) # shouldn't be necessary
+	alignresult = cmd.align(tmpmov,movsel)	
+	result = getrelframe(tmpmov,tmpref,Forigin)
+	cmd.delete(tmpmov)
+	cmd.delete(tmpref)	
+	return result, alignresult[0]
 
 def rechain(sel,nres):
-	chains = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz"
+	chains = ROSETTA_CHAINS
 	ntot = len(getres(sel))
 	assert ntot % nres == 0
 	for i in range(ntot/nres):
 		cmd.alter("resi %i-%i"%( nres*i+1,nres*(i+1)),"chain='%s'"%chains[i])
 
-def makecx(sel = 'all', n = 5):
-	v = cmd.get_view()
-	cmd.delete("C%i_*"%n)
-	chains = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	for i in range(n): cmd.create("C%i_%i"%(n, i), sel+" and (not C%i_*)"%n)
-	for i in range(n): rot("C%i_%i"%(n, i), Uz, 360.0*float(i)/float(n))
-	for i in range(n): cmd.alter("C%i_%i"%(n, i), "chain = '%s'"%chains[i])
-	util.cbc("C*")
-	cmd.set_view(v)
-
-def makedx(sel = 'all', n = 5):
-	v = cmd.get_view()
-	cmd.delete("D%i_*"%n)
-	chains = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	for i in range(n):
-		dsel  = "D%i_%i"%(n,  i)
-		dsel2 = "D%i_%i"%(n,n+i)
-		cmd.create(dsel , sel+" and (not D%i_*)"%n)
-		rot       (dsel , Uz, 360.0*float(i)/float(n))
-		cmd.create(dsel2, dsel )
-		rot       (dsel2, Uy, 180.0 )
-		cmd.alter (dsel , "chain = '%s'"%chains[i])
-		cmd.alter (dsel2, "chain = '%s'"%chains[i+n])
-	util.cbc("D*")
-	cmd.set_view(v)
-
-for i in range(2,21):
-		globals()['makec%i'%i] = partial(makecx,n=i)
-
-for i in range(2,21):
-		globals()['maked%i'%i] = partial(makedx,n=i)
-
-def makecxauto():
-	for o in cmd.get_object_list():
-		n = int(re.search("_C\d+_", o).group(0)[2:-1])
-		makecx(o, n)
 
 def makekinwire(sel,movres,fixres):
 	v = cmd.get_view()
@@ -474,7 +365,7 @@ def get_contigs(x,n=7):
 	>>> test = list(range(1,8)) + list(range(20,33)) + list(range(40,44)) + list(range(49,50))+ list(range(0,8))
 	>>> print test
 	[1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 40, 41, 42, 43, 49, 0, 1, 2, 3, 4, 5, 6, 7]
-	
+
 	>>> print get_contigs( test )
 	[[1, 2, 3, 4, 5, 6, 7], [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32], [0, 1, 2, 3, 4, 5, 6, 7]]
 	"""
@@ -488,23 +379,23 @@ def get_contigs(x,n=7):
 			contigs.append(list())
 	return [c for c in contigs if len(c) >= n]
 
-def get_contigs_termini(x,n=7):
-	"""
-	>>> test = list(range(1,8)) + list(range(20,33)) + list(range(40,44)) + list(range(49,50))+ list(range(0,8))
-	>>> print test
-	[1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 40, 41, 42, 43, 49, 0, 1, 2, 3, 4, 5, 6, 7]
-	
-	>>> print get_contigs_termini( test )
-	[[1, 2, 3, 4, 5, 6, 7], [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32], [0, 1, 2, 3, 4, 5, 6, 7]]
-	"""
-	pass #cend = []
+# def get_contigs_termini(x,n=7):
+# 	"""
+# 	>>> test = list(range(1,8)) + list(range(20,33)) + list(range(40,44)) + list(range(49,50))+ list(range(0,8))
+# 	>>> print test
+# 	[1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 40, 41, 42, 43, 49, 0, 1, 2, 3, 4, 5, 6, 7]
+
+# 	>>> print get_contigs_termini( test )
+# 	[[1, 2, 3, 4, 5, 6, 7], [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32], [0, 1, 2, 3, 4, 5, 6, 7]]
+# 	"""
+# 	pass #cend = []
 
 def get_fixed_size_contigs(x,n=7):
 	"""
 	>>> test = list(range(1,8)) + list(range(20,33)) + list(range(40,44)) + list(range(49,50))+ list(range(0,8))
 	>>> print test
 	[1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 40, 41, 42, 43, 49, 0, 1, 2, 3, 4, 5, 6, 7]
-	
+
 	>>> for f in get_fixed_size_contigs(test,7): print f
 	[1, 2, 3, 4, 5, 6, 7]
 	[20, 21, 22, 23, 24, 25, 26]
@@ -591,7 +482,134 @@ def gen_helical_alignments(sele1,sele2,pref="HALN"):
 			cmd.delete(name2)
 		cmd.delete(name1)
 
+def colorI53(sel="visible"):
+	a1 = '('+sel+') and (elem C) and (chain A+C+E+G+I)'
+	a2 = '('+sel+') and (elem C) and (chain 2+M+Q+U+Y)'
+	b1 = '('+sel+') and (elem C) and (chain B+L+N)'
+	b2 = '('+sel+') and (elem C) and (chain 3+D+b)'
+	cmd.color('cyan'    ,a1)
+	cmd.color('green'   ,b1)
+	cmd.color('magenta' ,a2)
+	cmd.color('yellow'  ,b2)
 
+
+def alignsym(sel="all",arch="I32",ax1=Vec(0,0,1),ax2=Vec(0.356825,0.000002,0.934171)):
+	if arch == "T32":
+		tgt1 = Vec( 1.00000000000000, 1.00000000000000, 1.00000000000000 ).normalized()
+		tgt2 = Vec( 1.00000000000000, 0.00000000000000, 0.00000000000000 ).normalized()
+	if arch == "T33":
+		tgt1 = Vec( 1.00000000000000, 1.00000000000000, 1.00000000000000 ).normalized()
+		tgt2 = Vec( 1.00000000000000, 1.00000000000000,-1.00000000000000 ).normalized()
+	if arch == "O32":
+		tgt1 = Vec( 1.00000000000000, 1.00000000000000, 1.00000000000000 ).normalized()
+		tgt2 = Vec( 1.00000000000000, 1.00000000000000, 0.00000000000000 ).normalized()
+	if arch == "O42":
+		tgt1 = Vec( 1.00000000000000, 0.00000000000000, 0.00000000000000 ).normalized()
+		tgt2 = Vec( 1.00000000000000, 1.00000000000000, 0.00000000000000 ).normalized()
+	if arch == "O43":
+		tgt1 = Vec( 1.00000000000000, 0.00000000000000, 0.00000000000000 ).normalized()
+		tgt2 = Vec( 1.00000000000000, 1.00000000000000, 1.00000000000000 ).normalized()
+	if arch == "I32":
+		tgt1 = Vec( 0.93417235896272, 0.00000000000000, 0.35682208977309 ).normalized()
+		tgt2 = Vec( 1.00000000000000, 0.00000000000000, 0.00000000000000 ).normalized()
+	if arch == "I52":
+		tgt1 = Vec( 0.85065080835204, 0.52573111211914, 0.00000000000000 ).normalized()
+		tgt2 = Vec( 1.00000000000000, 0.00000000000000, 0.00000000000000 ).normalized()
+	if arch == "I53":
+		tgt1 = Vec( 0.85065080835204, 0.52573111211914, 0.00000000000000 ).normalized()
+		tgt2 = Vec( 0.93417235896272, 0.00000000000000, 0.35682208977309 ).normalized()
+	if abs(ax1.angle(ax2) - tgt1.angle(tgt2) ) > 0.001:
+		print "your axes aren't spaced correctly for",arch,"angle should be",tgt1.angle(tgt2)
+		return
+	x = alignvectors( ax1, ax2, tgt1, tgt2 )
+	xform(sel,x)
+
+def xtal_frames(tgt=None,skip=tuple(),r=100):
+	axes = list()
+	objs = cmd.get_object_list()
+	if not tgt: tgt = objs[0]
+	assert tgt in objs
+	c = com(tgt)
+	covered = list()
+	for o in objs:
+		if o == tgt: continue
+		x = getrelframe(tgt,o)
+
+		# seenit = False
+		# for xc in covered:
+		# 	if x.t.distance(xc.t) < 0.001:
+		# 		seenit = True
+		# if seenit: continue
+
+		axis,ang = x.rotation_axis()
+		if ang < 1.0: continue # hack, nfold <= 6
+		mov = proj( axis, x.t).length()
+		if abs(mov) > 0.001: continue
+		print o
+		nf = 2*math.pi/ang
+		if nf % 1.0 > 0.001: continue
+		nf = int(nf)
+		if nf in skip: continue
+		if nf > 6 or nf == 5 or nf == 1: continue
+		ctot = Vec(0,0,0)
+		xtot = Xform()
+		for i in range(nf):
+			ctot += c
+			covered.append(xtot)
+			c = x * c
+			xtot *= x
+		ctot /= nf
+		# beg = ctot - r*axis
+		# end = ctot + r*axis
+		beg = ray_sphere_intersection( axis,ctot,c,r)
+		end = ray_sphere_intersection(-axis,ctot,c,r)
+		if not beg or not end: continue
+		if nf is not 2: showcyl(beg,end,0.3,col=(1.0,1.0,1.0))
+		else:           showcyl(beg,end,0.2,col=(1.0,0.5,0.2))
+		print round(nf),ctot,o
+
+def makeh(sele='vis',n=30):
+	cmd.delete('helix')
+	v = cmd.get_view()
+	x0 = getrelframe(sele+' and chain B',sele+' and chain A')
+	x = Xform()
+	cmd.create('tmp',sele+' and chain A and name n+ca+c')
+	for i in range(n):
+		cmd.create('Htmp%i'%i,'tmp')
+		xform('Htmp%i'%i,x)
+		cmd.alter('Htmp%i'%i,"chain='%s'"%ROSETTA_CHAINS[i])
+		print ROSETTA_CHAINS[i]
+		x = x * x0
+	cmd.create("HELIX",'Htmp*')
+	cmd.delete("Htmp*")
+	cmd.delete('tmp')
+	cmd.hide('ev','HELIX')
+	cmd.show('lines','helix')
+	util.cbc('HELIX')
+	cmd.set_view(v)
+
+cmd.extend('makeh',makeh)
+
+def color_by_2component(col1="green",col2="cyan"):
+	chains = r"""ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$&.<>?]{}|-_\~=%"""
+	chains1 = [chains[i] for i in range(0,len(chains),2)]
+	chains2 = [chains[i] for i in range(1,len(chains),2)]
+	for c in chains1:
+		print c+c+c+c+c
+		cmd.color(col1,"chain "+c)
+	for c in chains2:
+		print c+c+c+c+c
+		cmd.color(col2,"chain "+c)
+
+def make_ab_components(dir):
+	if not os.path.exists(dir+"_AB"):
+		os.mkdir(dir+"_AB")
+	for fn in os.listdir(dir):
+		if not fn.endswith(".pdb") and not fn.endswith(".pdb.gz"): continue
+		cmd.delete("all")
+		cmd.load(dir+"/"+fn,"a")
+		makec6("a",name="c6")
+		cmd.save(dir+"_AB/"+fn,"c6 and chain A+B")
 
 def nulltest():
 	"""
@@ -601,8 +619,8 @@ def nulltest():
 	return None
 
 def load_tests(loader, tests, ignore):
-    tests.addTests(doctest.DocTestSuite())
-    return tests
+	tests.addTests(doctest.DocTestSuite())
+	return tests
 
 if __name__ == '__main__':
    import doctest
