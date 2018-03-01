@@ -687,40 +687,64 @@ for pdb in pdb_list:
 			print "aligning dx"
 			print cmd.get_object_list()
 			print cmd.get_chains("toalign")
-
+			rmserr,angerr,axiserr = aligndx("toalign") #RMSD error, angle of symmetry error (degrees of global error), axis of symmetry error (higher is worse)
+			print "RMS error =", rmserr, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
+				
 			try:
 				print "hi"
 				aligndx("toalign")
 				print "hi2"
-				maxrms,angerr,axiserr = aligndx("toalign") #RMSD error, angle of symmetry error (degrees of global error), axis of symmetry error (higher is worse)
-				print "RMS error =", maxrms, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
+				rmserr,angerr,axiserr = aligndx("toalign") #RMSD error, angle of symmetry error (degrees of global error), axis of symmetry error (higher is worse)
+				print "RMS error =", rmserr, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
 				cmd.save(output_pdb_path + object1 +"_align_model.pdb","toalign")
 				cmd.save(output_pdb_path + object1 +"_chain_A_align_model.pdb","toalign and chain A")
 				#maxrms used to be rmserr
 			except:
 				print "Error: asymmetric, aligndx failed"
-				print "RMS error =", maxrms, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
+				print "RMS error =", rmserr, "Angle of symmetry erorr =", angerr, "Axis of symmetry error =", axiserr
 
 # add best_sym here?
 # added from here
+			best_sym=2
 
-		# merged = "merged"
-		# if nsubs == 2:
-		# 	cmd.do("tmp = aligndx(merged,2)")
-		# 	cmd.do("tmp = aligndx(merged,2)")
-		# elif nsubs == 3:
-		# 	cmd.do("tmp = aligndx(merged,3)")
-		# 	cmd.do("tmp = aligndx(merged,3)")
-		# elif nsubs == 4:
-		# 	cmd.do("tmp = aligndx(merged,4)")
-		# 	cmd.do("tmp = aligndx(merged,4)")
-		# elif nsubs == 5:
-		# 	cmd.do("tmp = aligndx(merged,5)")
-		# 	cmd.do("tmp = aligndx(merged,5)")
-		# else:
-		# 	cmd.do("tmp = aligndx(merged,6)")
-		# 	cmd.do("tmp = aligndx(merged,6)")
-		# results_list.append(tmp)
+			###copied this from below
+			merge_list = []
+			cmd.do("load %s" %(output_pdb_path + object1 + "_align_model.pdb"))
+			cmd.do("load %s" %(output_pdb_path + object1 + "_chain_A_align_model.pdb"))
+			cmd.do("set_name %s, align_model" %(object1 + "_align_model"))
+			cmd.do("set_name %s, chain_A" %(object1 + "_chain_A_align_model"))
+			super_string = ""
+			for i in range(0,best_sym):
+				chain_ord = 65 + i
+				chain_id = chr(chain_ord)
+				if i != 0:
+					cmd.do("create chain_%s, chain_A" %(chain_id))
+					cmd.do("alter %s, chain='%s'" %("chain_"+chain_id, chain_id))
+					super_string+="\nPROCESSING   Superposition_Report: chain %s" %(chain_id) + " RMSD = " + str(cmd.super("chain_%s" %(chain_id), "(align_model and chain %s)" %(chain_id), object=algn)[0])
+				merge_list.append("chain_" + chain_id )
+					
+			merge_string = " + ".join(merge_list)
+			cmd.do("create merged, (%s)" %(merge_string))
+			merged = "merged"
+			### end copied section
+
+			if best_sym == 2:
+				cmd.do("tmp = aligndx(merged,2)")
+				cmd.do("tmp = aligndx(merged,2)")
+			elif best_sym == 3:
+				cmd.do("tmp = aligndx(merged,3)")
+				cmd.do("tmp = aligndx(merged,3)")
+			elif best_sym == 4:
+				cmd.do("tmp = aligndx(merged,4)")
+				cmd.do("tmp = aligndx(merged,4)")
+			elif best_sym == 5:
+				cmd.do("tmp = aligndx(merged,5)")
+				cmd.do("tmp = aligndx(merged,5)")
+			else:
+				cmd.do("tmp = aligndx(merged,6)")
+				cmd.do("tmp = aligndx(merged,6)")
+			results_list.append(tmp)
+			print "did I append anything to the results list?: ", results_list
 
 		# cmd.reinitialize()
 				
@@ -730,14 +754,20 @@ for pdb in pdb_list:
 				# Could we look for orthoganol axes?
 			print "results_list: ", results_list
 			print "length of results_list: ", len(results_list)
-			best_sym = 2 #added this hardcode
+			#best_sym = 2 #added this hardcode
 
 			### commented out this section
-			# for index in range(0,len(results_list)):
-			# 	print "I am here"
-			# 	if ((float(results_list[index][2]) < float(options.max_distance_error)) and (float(results_list[index][3]) < float(options.max_angle_error))):
-			# 			best_sym = index+2
-			# 			print "best_sym is: ", best_sym
+			print "range(0,len(results_list)): ", range(0,len(results_list))
+			for index in range(0,len(results_list)):
+				print "I am here"
+				print "float(results_list[index][0]): " ,float(results_list[index][0])
+				print "float(results_list[index][1]): " ,float(results_list[index][1])
+				print "float(results_list[index][2]): " ,float(results_list[index][2])
+				#print "float(results_list[index][3]): " ,float(results_list[index][3])
+				if ((float(results_list[index][0]) < float(options.max_distance_error)) and (float(results_list[index][1]) < float(options.max_angle_error))):
+				#if ((float(results_list[0]) < float(options.max_distance_error)) and (float(results_list[1]) < float(options.max_angle_error))):
+						best_sym = index+2
+						print "best_sym is: ", best_sym
 			if best_sym != None:
 				print "hi best_sym"
 					
@@ -812,11 +842,16 @@ for pdb in pdb_list:
 					#	entry_dict['notes']+=" Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
 					#except KeyError:
 					#	entry_dict['notes']="Extra_Chains_Warning: More chains in " + output_pdb_path + object1 + "_ref.pdb than in the aligned complex. The actual assembly may be higher order."
-					
-				alignment_report_string = "\nPROCESSING   Axis_Alignment_Report: Axis = " + str(tmp[0])
-				alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Center = " + str(tmp[1])
-				alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Distance_Error = " + str(tmp[2])
-				alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Angle_Error = " + str(tmp[3])
+				
+				# print "str(tmp[0]): ", str(tmp[0])
+				# print "str(tmp[1]): ", str(tmp[1])
+				# print "str(tmp[2]): ", str(tmp[2])
+				# print "str(tmp[3]): ", str(tmp[3])
+
+				#alignment_report_string = "\nPROCESSING   Axis_Alignment_Report: Axis = " + str(tmp[0])
+				#alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Center = " + str(tmp[1])
+				alignment_report_string= "\nPROCESSING   Axis_Alignment_Report: Distance_Error = " + str(tmp[0])
+				alignment_report_string+= "\nPROCESSING   Axis_Alignment_Report: Angle_Error = " + str(tmp[1])
 					
 				if options.add_to_database:
 					entry_dict['dist_err'] = "%.3f" % round(tmp[2],3)
