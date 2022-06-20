@@ -1,0 +1,29 @@
+run /Users/erinyang/Documents/pymol_apps/sym_util2.py
+run /Users/erinyang/Documents/pymol_apps/enzdes_pymol_gen.py
+hide everything
+show ribbon
+set ribbon_width, 7 
+show lines
+hide lines, name C+O+N+*H*
+show lines, (resn PRO and name N)+(name NH1+NH2)+(name OH)+(name CH2)
+util.cbc(quiet=1)
+color nitrogen, name N*
+color oxygen, name O*
+color sulfur, name S*
+color hydrogen, hydrogens
+set ray_trace_mode, 1
+set antialias, 2
+set ray_shadows, 0
+set specular, 0
+zoom chain A
+show spheres, name oxt+1h
+run /Users/erinyang/Documents/pymol_apps/obj_arrows.py
+set orthoscopic
+hide (h.) 
+set sphere_transparency, 0.75
+run /Users/erinyang/Documents/pymol_apps/sym_util.py
+run /Users/erinyang/Documents/pymol_apps/pymol_util.py
+run /Users/erinyang/Documents/pymol_apps/xyzMath.py
+run /Users/erinyang/Documents/pymol_apps/symgen.py
+run /Users/erinyang/Documents/pymol_apps/tmalign.py
+run /Users/erinyang/Documents/pymol_apps/obj_arrows.py

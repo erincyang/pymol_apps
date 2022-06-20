@@ -43,7 +43,7 @@ def find_symelems(sele_or_xforms="all",verbose=False):
 		axis,ang = x.rotation_axis()
 		nfold = round(math.pi*2.0/ang)
 		angerr = abs(ang-math.pi*2.0/nfold)*180.0/math.pi
-		if verbose: print "candidate symelem:",nfold, c, angerr, axis
+		if verbose: print("candidate symelem:",nfold, c, angerr, axis)
 		if angerr > 360.0/nfold/8.0: continue # require unambiguous symelems
 		maxangerr = max(maxangerr,angerr*nfold)
 		symelems.append( (nfold,axis,c,angerr) )
@@ -51,18 +51,18 @@ def find_symelems(sele_or_xforms="all",verbose=False):
 	if verbose:
 		for se1,se2 in filter( lambda t: t[0]<t[1], product(symelems,symelems) ):
 			if se1[0]==se2[0]:
-				print se1
-				print se2
-				print symelemdis(se1,se2), "degrees"
-				print
+				print(se1)
+				print(se)
+				print(symelemdis(se1,se2), "degrees")
+				#print
 	hier = HierarchicalClustering(symelems, symelemdis )
 	thresh = 6.0
 	clusters = hier.getlevel(thresh);
-	print "number of symmetry element clusters at threshold",thresh,"degrees is" , len(clusters)
+	print("number of symmetry element clusters at threshold",thresh,"degrees is" , len(clusters))
 	centers0 = list()
 	maxaxiserr = 0.0
 	for clust in clusters:
-		print "symelem cluster:",clust
+		print("symelem cluster:",clust)
 		center = list(clust[0])
 		center[2] = list((center[2],))
 		for i in range(1,len(clust)):
@@ -79,20 +79,20 @@ def find_symelems(sele_or_xforms="all",verbose=False):
 	centers0 = sorted( centers0, cmp = lambda x,y: cmp(y[0],x[0]) if x[0]!=y[0] else cmp(len(y[2]),len(x[2])) )
 	centers = list()
 	for center in centers0:
-		if verbose: print "DEBUG prune center:",center
+		if verbose: print("DEBUG prune center:",center)
 		seenit = False
 		for censeen in centers:
 			remainder = abs( ( censeen[0] / center[0] ) % 1.0)
-			if verbose: print "   ",remainder,censeen
+			if verbose: print("   ",remainder,censeen)
 			if remainder > 0.01: continue # not a symmetry multiple
 			if 1.0-abs(center[1].dot(censeen[1])) < 0.01:
 				seenit = True # axis are same
 		if not seenit:
 			centers.append(center)
-	print "centers:"
+	print("centers:")
 	cen_of_geom = com("("+sele_or_xforms+") and (name CA and not HET)")
 	for center in centers:
-		print center
+		print(center)
 		# if center[0]>2.1: continue
 		#showvecfrompoint(50*center[1],cen_of_geom)
 	return centers, maxrms, maxangerr, maxaxiserr
@@ -120,7 +120,7 @@ def guesscxaxis(sele,nfold,chains=None):
 	sele = "(("+sele+") and (name CA))"
 	if not chains: chains = cmd.get_chains(sele)
 	if len(chains) != nfold: 
-		print "num chains != n-fold"
+		print("num chains != n-fold")
 		return None
 	atoms = cmd.get_model(sele).atom
 	idx = {}
@@ -130,7 +130,7 @@ def guesscxaxis(sele,nfold,chains=None):
 		if a.chain in idx:
 			coords[idx[a.chain]].append(Vec(a.coord))
 	if max(len(x) for x in coords) != min(len(x) for x in coords):
-		print "chains not same length",
+		print("chains not same length",)
 		return None
 	cen = reduce(op.add,(x for c in coords for x in c),V0) / len(coords[0]*len(coords))
 	guesses = []
@@ -322,7 +322,7 @@ def mki213(N, sel = 'all'):
 	R2 = [xyz.rotation_matrix_degrees(a2, 0), xyz.rotation_matrix_degrees(a2, 180), ]
 	R3 = [xyz.rotation_matrix_degrees(a3, 0), xyz.rotation_matrix_degrees(a3, 120), xyz.rotation_matrix_degrees(a3, 240), ]
 	C = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	print a2, c2, a3, c3
+	print(a2, c2, a3, c3)
 	for i21 in range(2):
 		for i32 in range(3 if N > 1 else 1):
 			for i22 in range(2 if N > 2 else 1):
@@ -361,7 +361,7 @@ def mki213(N, sel = 'all'):
 										rot(n, a2, i24*180.0, c2)
 										rot(n, a3, i35*120.0, c3)
 										rot(n, a2, i25*180.0, c2)
-	print len(seenit)
+	print(len(seenit))
 	cmd.delete('base80345769083457')
 	cmd.set_view(v)
 
@@ -403,7 +403,7 @@ def mkp23(N, R=43.5, i=0, sel = 'all'):
 	      xyz.rotation_matrix_degrees(a3[1],120),
 	      xyz.rotation_matrix_degrees(a3[2],120), ]
 	C = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	print a2, c2, a3, c3
+	print(a2, c2, a3, c3)
 	for i21 in range(4):
 		for i32 in range(3 if N > 1 else 1):
 			for i22 in range(4 if N > 2 else 1):
@@ -442,7 +442,7 @@ def mkp23(N, R=43.5, i=0, sel = 'all'):
 										if i24 > 0: rot(n, a2[i24], 180.0, c2)
 										if i35 > 0: rot(n, a3[i35], 120.0, c3)
 										if i25 > 0: rot(n, a2[i25], 180.0, c2)
-	print "seen:",len(seenit)
+	print("seen:",len(seenit))
 	cmd.delete('base80345769083457')
 	cmd.set_view(v)
 
@@ -612,10 +612,10 @@ def get_contigs_termini(x,n=7):
 def get_fixed_size_contigs(x,n=7):
 	"""
 	>>> test = list(range(1,8)) + list(range(20,33)) + list(range(40,44)) + list(range(49,50))+ list(range(0,8))
-	>>> print test
+	>>> print(test)
 	[1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 40, 41, 42, 43, 49, 0, 1, 2, 3, 4, 5, 6, 7]
 	
-	>>> for f in get_fixed_size_contigs(test,7): print f
+	>>> for f in get_fixed_size_contigs(test,7): print(f)
 	[1, 2, 3, 4, 5, 6, 7]
 	[20, 21, 22, 23, 24, 25, 26]
 	[21, 22, 23, 24, 25, 26, 27]
@@ -627,17 +627,17 @@ def get_fixed_size_contigs(x,n=7):
 	[0, 1, 2, 3, 4, 5, 6]
 	[1, 2, 3, 4, 5, 6, 7]
 
-	>>> for f in get_fixed_size_contigs(test,9): print f
+	>>> for f in get_fixed_size_contigs(test,9): print(f)
 	[20, 21, 22, 23, 24, 25, 26, 27, 28]
 	[21, 22, 23, 24, 25, 26, 27, 28, 29]
 	[22, 23, 24, 25, 26, 27, 28, 29, 30]
 	[23, 24, 25, 26, 27, 28, 29, 30, 31]
 	[24, 25, 26, 27, 28, 29, 30, 31, 32]
 
-	>>> print len(get_fixed_size_contigs(test,1))
+	>>> print(len(get_fixed_size_contigs(test,1)))
 	28
 
-	>>> for f in get_fixed_size_contigs(test,4): print f
+	>>> for f in get_fixed_size_contigs(test,4): print(f)
 	[1, 2, 3, 4]
 	[2, 3, 4, 5]
 	[3, 4, 5, 6]
@@ -690,9 +690,9 @@ def gen_helical_alignments(sele1,sele2,pref="HALN"):
 			name2 = pref+"_"+tmpname()
 			algn2 = name2+" and "+hsel2
 			cmd.create(name2,sele2)
-			print algn2,algn1
-			print name1+" and chain A and "+hsel1
-			print name2+" and chain Z and "+hsel2
+			print(algn2,algn1)
+			print(name1+" and chain A and "+hsel1)
+			print(name2+" and chain Z and "+hsel2)
 			# now align them
 			cmd.align( name2+" and chain Z and "+hsel2, name1+" and chain A and "+hsel1 )
 			name3 = pref+"_%03i_%03i"%(i,j)
@@ -705,7 +705,7 @@ def gen_helical_alignments(sele1,sele2,pref="HALN"):
 
 def nulltest():
 	"""
-	>>> print "foo"
+	>>> print("foo")
 	foo
 	"""
 	return None
@@ -717,6 +717,6 @@ def load_tests(loader, tests, ignore):
 if __name__ == '__main__':
    import doctest
    r = doctest.testmod()
-   print r
+   print(r)
 
 

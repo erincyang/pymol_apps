@@ -65,7 +65,7 @@ try:
 	from chempy import cpv
 	def inpymol(): return True
 except ImportError as e:
-	print "can't load pymol, Mocking it for testing/doc"
+	print("can't load pymol, Mocking it for testing/doc")
 	from minimock import Mock
 	pymol = Mock("pymol")
 	cmd = Mock("cpv")
@@ -94,9 +94,9 @@ class res:
 		self.a1_name = 'residue_%d_atom_1'%id_number
 		self.a2_name = 'residue_%d_atom_2'%id_number
 		self.a3_name = 'residue_%d_atom_3'%id_number
-		print atom1,'->',self.a1_name
-		print atom2,'->',self.a2_name
-		print atom3,'->',self.a3_name
+		print(atom1,'->',self.a1_name)
+		print(atom2,'->',self.a2_name)
+		print(atom3,'->',self.a3_name)
 
 		# pymol cmd function does the rest
 		cmd.set_name(atom1,self.a1_name)
@@ -170,9 +170,9 @@ def cst(res1,res2,outfile=0):
 CST::END''' %(cst_header, cst_distance, cst_angles, cst_torsions)
 	
 	# prints cst in pymol window
-	print full_cst
+	print(full_cst)
 
 	# prints cst to path/file in filename
 	if outfile:
 		with open(outfile,'a') as openoutfile:
-			print>>openoutfile, full_cst
+			print(full_cst) >> openoutfile

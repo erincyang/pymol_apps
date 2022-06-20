@@ -4,7 +4,8 @@ show cartoon
 show lines
 hide (h.)
 util.cbc
-show spheres, name oxt+1h
+show spheres, name OXT
+show spheres, name 1H
 color nitrogen, name N*
 color oxygen, name O*
 color sulfur, name S*
