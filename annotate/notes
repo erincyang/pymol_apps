@@ -1,0 +1,12 @@
+add to pymolrc:
+
+    (run script)
+    ex.
+    run /home/erinyang/scripts/pymol/annotate/annotate.py
+    
+    (set hotkeys - on my comp I have to press ctrl+hotkey I think so try that if it doesn't work)
+    cmd.set_key('F10', annotate_bad)
+    cmd.set_key('F12', annotate_good)
+
+to use: select some part of object (ie. click random residue), press hotkey for good/bad
+        writes name + 1 or 0 to file in directory called "annotate.txt"

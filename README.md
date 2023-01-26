@@ -1,1 +1,1 @@
-# crystal_pymolscripts
+# erinyang pymol_scripts
