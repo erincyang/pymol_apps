@@ -3,7 +3,7 @@ from pymol import cmd
 from pymol.vfont import plain
 
 w = 0.2 # cylinder width 
-l = 150.0 # cylinder length
+l = 80.0 # cylinder length
 h = 1.0 # cone hight
 d = w * 1.618 # cone base diameter
  

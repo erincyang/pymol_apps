@@ -56,7 +56,10 @@ import string, sys, os, inspect, datetime, subprocess, re
 newpath = os.path.dirname(inspect.getfile(inspect.currentframe())) # script directory
 if not newpath in sys.path: sys.path.append(newpath)
 from optparse import OptionParser
-from StringIO import StringIO
+try:
+    from StringIO import StringIO ## for Python 2
+except ImportError:
+    from io import StringIO ## for Python 3
 import numpy as np
 
 #### Command-line flags ####
@@ -67,7 +70,7 @@ parser.add_option("-i", dest="pdb", default="", help="Input pdb")
 parser.add_option("-l", dest="pdb_list", default="", help="A file with a list of input pdbs. Optionally, when getting from the database can add _biounitnumber to specify specifc biounits for each pdbid") 
 parser.add_option("-o", dest="output_dir", default="", help="Where should the output files be placed?") 
 parser.add_option("-b", dest="biounit_number", default="", help="Optional Argument If For single_biounit_mode: Which biounit should be used? If not given then will try all available.") 
-parser.add_option("-p", dest="pymol_scripts_dir", default="%s" %(os.getenv("HOME")+"/crystal_pymolscripts/auto_prep/"), help="Location of Will's util.py pymol module") 
+parser.add_option("-p", dest="pymol_scripts_dir", default="%s" %(os.getenv("HOME")+"/pymol_apps/pymol/"), help="Location of Will's util.py pymol module") 
 parser.add_option("-a", dest="add_to_database", action="store_true", default=False, help="Do you want to add this to the oligomer database?")
 parser.add_option("-g", dest="get_from_database", action="store_true", default=False, help="Do you want to get the structure from the shared biounits database?")
 parser.add_option("-z", dest="alignz", action="store_true", default=False, help="Do you want to extract the shortest chain and align radial symmetry axis with the z-axis?")
@@ -159,7 +162,7 @@ for pdb in pdb_list:
 	if options.add_to_database:
 		output_pdb_path = os.getenv("HOME")+"/databases/symmetric_scaffolds/"+input_pdbname[1:3]+"/"
 		if (not os.path.exists(output_pdb_path)):
-			print "Making new output directory: " + output_pdb_path
+			print("Making new output directory: " + output_pdb_path)
 			subprocess.check_output("mkdir -p " + output_pdb_path,stderr=subprocess.STDOUT,shell=True)
 		if os.path.exists(output_pdb_path+output_pdbname):
 			subprocess.check_output("rm " + output_pdb_path + output_pdbname,stderr=subprocess.STDOUT,shell=True) 
@@ -169,7 +172,7 @@ for pdb in pdb_list:
 			log_string1 = "PROCESSING   InputPDB: " + input_pdb_path + input_pdbname
 			subprocess.check_output("cp " + output_pdb_path + output_pdbname + " " + output_pdb_path + output_pdbname.replace(".pdb","") + "_ref.pdb",stderr=subprocess.STDOUT,shell=True) 
 		else:
-			print input_pdbname + " reports failure: File could not be found."
+			print(input_pdbname + " reports failure: File could not be found.")
 			continue
 	else:
 		if  options.output_dir != "":
@@ -313,7 +316,7 @@ for pdb in pdb_list:
 			for state in range(1,states+1):
 				state_suffix = "_%04d" %(state)
 				if len(chains) != len(cmd.get_chains("%s" %(object1+state_suffix))):
-					print input_pdbname + " reports failure: The number of chains in the different states do not match."
+					print(input_pdbname + " reports failure: The number of chains in the different states do not match.")
 					biounit_number+=1
 					if single_biounit_mode:
 						another_biounit = False
@@ -387,7 +390,7 @@ for pdb in pdb_list:
 					#	entry_dict['notes']=chain_warning[14:] 
 					cmd.do("remove chain %s" %(ch))
 		else:
-			print input_pdbname + " reports failure: Only 1 chain 1 model found."
+			print(input_pdbname + " reports failure: Only 1 chain 1 model found.")
 			biounit_number+=1
 			if single_biounit_mode:
 				another_biounit = False
@@ -818,14 +821,14 @@ for pdb in pdb_list:
 					subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 					subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 					subprocess.check_output("rm " + output_pdb_path + object1 + ".pdb",stderr=subprocess.STDOUT,shell=True)
-					print input_pdbname + " reports success: Aligned to Z axis with C" + str(best_sym) + " symmetry." 
+					print(input_pdbname + " reports success: Aligned to Z axis with C" + str(best_sym) + " symmetry.")
 					if options.add_to_database:
 						new_rows.append(add_entry(database_headers=database_headers,refids=refids,my_dict=entry_dict))
 				elif options.view_in_pymol and (len(pdb_list) == 1):
 					subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 					subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 					subprocess.check_output("rm " + output_pdb_path + object1 + ".pdb",stderr=subprocess.STDOUT,shell=True)
-					print input_pdbname + " reports success: Aligned to Z axis with C" + str(best_sym) + " symmetry." 
+					print(input_pdbname + " reports success: Aligned to Z axis with C" + str(best_sym) + " symmetry.")
 					if options.add_to_database:
 						new_rows.append(add_entry(database_headers=database_headers,refids=refids,my_dict=entry_dict))
 					#cmd.do("run %s/axes.py" %(options.pymol_scripts_dir))
@@ -833,7 +836,7 @@ for pdb in pdb_list:
 				subprocess.check_output("rm " + output_pdb_path + object1 + "_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 				subprocess.check_output("rm " + output_pdb_path + object1 + "_chain_A_align_model.pdb",stderr=subprocess.STDOUT,shell=True)
 				subprocess.check_output("rm " + output_pdb_path + object1 + ".pdb",stderr=subprocess.STDOUT,shell=True)
-				print input_pdbname + " reports failure: Not found to possess C2, C3, C4, C5, or C6 symmetry."
+				print(input_pdbname + " reports failure: Not found to possess C2, C3, C4, C5, or C6 symmetry.")
 
 		biounit_number+=1
 		if single_biounit_mode:
